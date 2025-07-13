@@ -29,22 +29,39 @@ app.get('/status', (req, res) => {
     res.json({ status: 'ok', message: 'API está a funcionar' });
 });
 
-// Rota para ler dados da aba _Movimentacoes
-app.get('/api/movimentacoes', async (req, res) => {
+// Rota para adicionar dados na aba _Movimentacoes
+app.post('/api/movimentacoes', async (req, res) => {
     try {
         const client = await auth.getClient();
         const googleSheets = google.sheets({ version: 'v4', auth: client });
 
-        const response = await googleSheets.spreadsheets.values.get({
+        // Os dados a serem adicionados virão no corpo do pedido (req.body)
+        // A ordem no array deve corresponder à ordem das colunas na sua planilha
+        const newRow = [
+            req.body.id_mov,      // Coluna A: ID Mov.
+            req.body.data,        // Coluna B: Data
+            req.body.tipo,        // Coluna C: Tipo (Entrada/Saída)
+            req.body.categoria,   // Coluna D: Categoria
+            req.body.descricao,   // Coluna E: Descrição
+            req.body.valor,       // Coluna F: Valor
+            req.body.responsavel, // Coluna G: Responsável
+            req.body.observacoes  // Coluna H: Observações
+        ];
+
+        await googleSheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
             range: '_Movimentacoes',
+            valueInputOption: 'USER_ENTERED',
+            resource: {
+                values: [newRow],
+            },
         });
 
-        res.json(response.data.values);
+        res.status(201).json({ message: 'Movimentação adicionada com sucesso!' });
 
     } catch (error) {
-        console.error('Erro ao ler a aba _Movimentacoes:', error.message);
-        res.status(500).send('Erro no servidor ao ler a aba _Movimentacoes.');
+        console.error('Erro ao adicionar movimentação:', error.message);
+        res.status(500).send('Erro no servidor ao adicionar movimentação.');
     }
 });
 
