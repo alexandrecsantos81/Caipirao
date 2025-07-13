@@ -1,32 +1,73 @@
 document.addEventListener('DOMContentLoaded', () => {
     
+    // --- LÓGICA DE NAVEGAÇÃO ---
+    const navLinks = document.querySelectorAll('.nav-link');
+    const pageContents = document.querySelectorAll('.page-content');
+    const pageTitle = document.getElementById('page-title');
+
+    function showPage(pageId) {
+        pageContents.forEach(page => {
+            page.classList.remove('active');
+        });
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+        });
+
+        const targetPage = document.getElementById(`page-${pageId}`);
+        const targetLink = document.querySelector(`a[href="#${pageId}"]`);
+        
+        if (targetPage) {
+            targetPage.classList.add('active');
+            pageTitle.textContent = targetLink.textContent.trim().replace(/^[^\w]+/, ''); // Remove o emoji
+        }
+        if (targetLink) {
+            targetLink.classList.add('active');
+        }
+
+        // Carrega os dados específicos da página quando ela é exibida
+        if (pageId === 'movimentacoes' || pageId === 'dashboard') {
+            fetchMovimentacoes();
+        } 
+        // Adicionaremos a lógica para clientes e produtos aqui no futuro
+        // else if (pageId === 'clientes') { fetchClientes(); }
+        // else if (pageId === 'produtos') { fetchProdutos(); }
+    }
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const pageId = link.getAttribute('href').substring(1);
+            showPage(pageId);
+        });
+    });
+
+    // Mostrar a página inicial (Dashboard)
+    showPage('dashboard');
+
+    // --- LÓGICA DO DASHBOARD E MOVIMENTAÇÕES (CÓDIGO ANTERIOR) ---
+    
     const movimentacoesContainer = document.getElementById('movimentacoes-container');
     const form = document.getElementById('add-movimentacao-form');
     
-    // Elementos do novo Dashboard
     const totalEntradasEl = document.getElementById('total-entradas');
     const totalSaidasEl = document.getElementById('total-saidas');
     const saldoAtualEl = document.getElementById('saldo-atual');
     const categoryChartCanvas = document.getElementById('categoryChart');
-    let categoryChart = null; // Variável para guardar a instância do gráfico
+    let categoryChart = null;
 
-    // Função para formatar números como moeda brasileira
     function formatCurrency(value) {
         return parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    // Função assíncrona para buscar os dados da nossa API
     async function fetchMovimentacoes() {
         try {
             const response = await fetch('http://localhost:3000/api/movimentacoes');
             if (!response.ok) throw new Error(`Erro HTTP! Status: ${response.status}`);
             const data = await response.json();
             
-            // Transforma os dados em objetos para facilitar a manipulação
             const formattedData = formatData(data);
-
-            updateDashboard(formattedData); // Atualiza os cards e o gráfico
-            displayTable(data); // A tabela ainda pode usar o formato original
+            updateDashboard(formattedData);
+            displayTable(data);
 
         } catch (error) {
             console.error('Erro ao buscar dados da API:', error);
@@ -34,12 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Nova função para formatar os dados
     function formatData(rawData) {
         if (!rawData || rawData.length < 2) return [];
         const headers = rawData[0];
         const dataRows = rawData.slice(1);
-
         return dataRows.map(row => {
             const rowData = {};
             headers.forEach((header, index) => {
@@ -49,78 +88,55 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Função para atualizar os cards e o gráfico
     function updateDashboard(data) {
         let totalEntradas = 0;
         let totalSaidas = 0;
         const categoryTotals = {};
-
         data.forEach(mov => {
             const valorString = mov.Valor || '0';
             const valor = parseFloat(valorString.replace('R$', '').replace(/\./g, '').replace(',', '.').trim()) || 0;
-            
             const tipo = mov['Tipo (Entrada/Saída)'];
             const categoria = mov.Categoria;
-
             if (tipo === 'Entrada') {
                 totalEntradas += valor;
-                if (categoria) {
-                    categoryTotals[categoria] = (categoryTotals[categoria] || 0) + valor;
-                }
+                if (categoria) categoryTotals[categoria] = (categoryTotals[categoria] || 0) + valor;
             } else if (tipo === 'Saída') {
                 totalSaidas += valor;
-                if (categoria) {
-                    categoryTotals[categoria] = (categoryTotals[categoria] || 0) + valor;
-                }
+                if (categoria) categoryTotals[categoria] = (categoryTotals[categoria] || 0) + valor;
             }
         });
-
         const saldoAtual = totalEntradas - totalSaidas;
-
         totalEntradasEl.textContent = formatCurrency(totalEntradas);
         totalSaidasEl.textContent = formatCurrency(totalSaidas);
         saldoAtualEl.textContent = formatCurrency(saldoAtual);
-
-        // Atualiza o gráfico
         updateChart(categoryTotals);
     }
 
-    // Função para criar ou atualizar o gráfico de categorias
     function updateChart(categoryData) {
         const labels = Object.keys(categoryData);
         const data = Object.values(categoryData);
-
         if (categoryChart) {
-            // Se o gráfico já existe, apenas atualiza os dados
             categoryChart.data.labels = labels;
             categoryChart.data.datasets[0].data = data;
             categoryChart.update();
         } else {
-            // Se não existe, cria um novo
             const ctx = categoryChartCanvas.getContext('2d');
             categoryChart = new Chart(ctx, {
-                type: 'doughnut', // Tipo de gráfico: rosca
+                type: 'doughnut',
                 data: {
                     labels: labels,
                     datasets: [{
                         label: 'Valor por Categoria',
                         data: data,
-                        backgroundColor: [
-                            '#3b82f6', '#ef4444', '#22c55e', '#f97316',
-                            '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'
-                        ],
+                        backgroundColor: ['#3b82f6', '#ef4444', '#22c55e', '#f97316', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'],
                         hoverOffset: 4
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                }
+                options: { responsive: true, maintainAspectRatio: false }
             });
         }
     }
 
-    // Função para exibir os dados na tabela (mantida do Dia 5)
     function displayTable(data) {
         movimentacoesContainer.innerHTML = '';
         if (!data || data.length <= 1) {
@@ -158,7 +174,6 @@ document.addEventListener('DOMContentLoaded', () => {
         movimentacoesContainer.appendChild(table);
     }
 
-    // Lógica para o formulário (igual a antes)
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         const formData = new FormData(form);
@@ -179,6 +194,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Executa a função para buscar os dados assim que a página carrega
     fetchMovimentacoes();
 });
