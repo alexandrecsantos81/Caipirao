@@ -12,11 +12,15 @@ app.use(cors());
 app.use(express.json());
 
 // --- Configuração da Autenticação ---
-const KEYFILEPATH = path.join(__dirname, '../data/credenciais.json');
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
 
+// Lógica para usar as credenciais do Render ou o ficheiro local
+const creds = process.env.GOOGLE_CREDENTIALS ? 
+              JSON.parse(process.env.GOOGLE_CREDENTIALS) : 
+              require(path.join(__dirname, '../data/credenciais.json'));
+
 const auth = new google.auth.GoogleAuth({
-    keyFile: KEYFILEPATH,
+    credentials: creds,
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
