@@ -20,7 +20,6 @@ const auth = new google.auth.GoogleAuth({
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
-
 // --- ROTAS DA API ---
 
 // Rota de Status
@@ -66,8 +65,6 @@ app.post('/api/movimentacoes', async (req, res) => {
     }
 });
 
-// --- NOVAS ROTAS PARA CLIENTES ---
-
 // Rota para LER dados da aba Clientes
 app.get('/api/clientes', async (req, res) => {
     try {
@@ -75,7 +72,7 @@ app.get('/api/clientes', async (req, res) => {
         const googleSheets = google.sheets({ version: 'v4', auth: client });
         const response = await googleSheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Clientes', // Nome exato da sua aba de clientes
+            range: 'Clientes',
         });
         res.json(response.data.values);
     } catch (error) {
@@ -89,16 +86,9 @@ app.post('/api/clientes', async (req, res) => {
     try {
         const client = await auth.getClient();
         const googleSheets = google.sheets({ version: 'v4', auth: client });
-        
-        // A ordem aqui deve corresponder à ordem das colunas na sua planilha
         const newRow = [
-            req.body.id,       // Coluna A: ID
-            req.body.nome,     // Coluna B: Nome
-            req.body.telefone, // Coluna C: Telefone
-            req.body.email,    // Coluna D: E-mail
-            req.body.endereco  // Coluna E: Endereço
+            req.body.id, req.body.nome, req.body.contato, req.body.endereco
         ];
-
         await googleSheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
             range: 'Clientes',
@@ -109,6 +99,51 @@ app.post('/api/clientes', async (req, res) => {
     } catch (error) {
         console.error('Erro ao adicionar cliente:', error.message);
         res.status(500).send('Erro no servidor ao adicionar cliente.');
+    }
+});
+
+// --- NOVAS ROTAS PARA PRODUTOS ---
+
+// Rota para LER dados da aba Produtos
+app.get('/api/produtos', async (req, res) => {
+    try {
+        const client = await auth.getClient();
+        const googleSheets = google.sheets({ version: 'v4', auth: client });
+        const response = await googleSheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: 'Produtos', // Nome exato da sua aba de produtos
+        });
+        res.json(response.data.values);
+    } catch (error) {
+        console.error('Erro ao ler a aba Produtos:', error.message);
+        res.status(500).send('Erro no servidor ao ler a aba Produtos.');
+    }
+});
+
+// Rota para ADICIONAR dados na aba Produtos
+app.post('/api/produtos', async (req, res) => {
+    try {
+        const client = await auth.getClient();
+        const googleSheets = google.sheets({ version: 'v4', auth: client });
+        
+        // A ordem aqui deve corresponder à nova ordem das colunas
+        const newRow = [
+            req.body.id,
+            req.body.nome,
+            req.body.descricao,
+            req.body.preco
+        ];
+
+        await googleSheets.spreadsheets.values.append({
+            spreadsheetId: SPREADSHEET_ID,
+            range: 'Produtos',
+            valueInputOption: 'USER_ENTERED',
+            resource: { values: [newRow] },
+        });
+        res.status(201).json({ message: 'Produto adicionado com sucesso!' });
+    } catch (error) {
+        console.error('Erro ao adicionar produto:', error.message);
+        res.status(500).send('Erro no servidor ao adicionar produto.');
     }
 });
 
