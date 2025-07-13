@@ -6,19 +6,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const pageTitle = document.getElementById('page-title');
 
     function showPage(pageId) {
-        pageContents.forEach(page => {
-            page.classList.remove('active');
-        });
-        navLinks.forEach(link => {
-            link.classList.remove('active');
-        });
+        pageContents.forEach(page => page.classList.remove('active'));
+        navLinks.forEach(link => link.classList.remove('active'));
 
         const targetPage = document.getElementById(`page-${pageId}`);
         const targetLink = document.querySelector(`a[href="#${pageId}"]`);
         
         if (targetPage) {
             targetPage.classList.add('active');
-            pageTitle.textContent = targetLink.textContent.trim().replace(/^[^\w]+/, ''); // Remove o emoji
+            pageTitle.textContent = targetLink.textContent.trim().replace(/^[^\w]+/, '');
         }
         if (targetLink) {
             targetLink.classList.add('active');
@@ -27,9 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Carrega os dados específicos da página quando ela é exibida
         if (pageId === 'movimentacoes' || pageId === 'dashboard') {
             fetchMovimentacoes();
-        } 
-        // Adicionaremos a lógica para clientes e produtos aqui no futuro
-        // else if (pageId === 'clientes') { fetchClientes(); }
+        } else if (pageId === 'clientes') {
+            fetchClientes();
+        }
+        // Adicionaremos a lógica para produtos aqui no futuro
         // else if (pageId === 'produtos') { fetchProdutos(); }
     }
 
@@ -41,13 +38,51 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Mostrar a página inicial (Dashboard)
-    showPage('dashboard');
+    // --- LÓGICA DA PÁGINA DE CLIENTES ---
+    const clientesContainer = document.getElementById('clientes-container');
+    const clienteForm = document.getElementById('add-cliente-form');
+
+    async function fetchClientes() {
+        try {
+            const response = await fetch('http://localhost:3000/api/clientes');
+            if (!response.ok) throw new Error(`Erro HTTP! Status: ${response.status}`);
+            const data = await response.json();
+            displayClientes(data);
+        } catch (error) {
+            console.error('Erro ao buscar clientes:', error);
+            clientesContainer.innerHTML = '<p class="text-red-500">Falha ao carregar os dados dos clientes.</p>';
+        }
+    }
+
+    function displayClientes(data) {
+        // A função genérica de criar tabela será usada aqui também
+        createTable(clientesContainer, data);
+    }
+
+    clienteForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const formData = new FormData(clienteForm);
+        const data = Object.fromEntries(formData.entries());
+        try {
+            const response = await fetch('http://localhost:3000/api/clientes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            if (!response.ok) throw new Error(`Erro ao enviar dados! Status: ${response.status}`);
+            alert('Cliente adicionado com sucesso!');
+            clienteForm.reset();
+            fetchClientes(); // Atualiza a tabela
+        } catch (error) {
+            console.error('Erro ao adicionar cliente:', error);
+            alert('Falha ao adicionar cliente.');
+        }
+    });
+
 
     // --- LÓGICA DO DASHBOARD E MOVIMENTAÇÕES (CÓDIGO ANTERIOR) ---
-    
     const movimentacoesContainer = document.getElementById('movimentacoes-container');
-    const form = document.getElementById('add-movimentacao-form');
+    const movimentacaoForm = document.getElementById('add-movimentacao-form');
     
     const totalEntradasEl = document.getElementById('total-entradas');
     const totalSaidasEl = document.getElementById('total-saidas');
@@ -67,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const formattedData = formatData(data);
             updateDashboard(formattedData);
-            displayTable(data);
+            displayTable(movimentacoesContainer, data); // Passa o container correto
 
         } catch (error) {
             console.error('Erro ao buscar dados da API:', error);
@@ -89,8 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateDashboard(data) {
-        let totalEntradas = 0;
-        let totalSaidas = 0;
+        let totalEntradas = 0, totalSaidas = 0;
         const categoryTotals = {};
         data.forEach(mov => {
             const valorString = mov.Valor || '0';
@@ -136,11 +170,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
-
-    function displayTable(data) {
-        movimentacoesContainer.innerHTML = '';
+    
+    // FUNÇÃO GENÉRICA PARA CRIAR TABELAS
+    function createTable(container, data) {
+        container.innerHTML = '';
         if (!data || data.length <= 1) {
-            movimentacoesContainer.innerHTML = '<p>Nenhuma movimentação encontrada.</p>';
+            container.innerHTML = '<p>Nenhum dado encontrado.</p>';
             return;
         }
         const table = document.createElement('table');
@@ -171,12 +206,12 @@ document.addEventListener('DOMContentLoaded', () => {
             tbody.appendChild(row);
         });
         table.appendChild(tbody);
-        movimentacoesContainer.appendChild(table);
+        container.appendChild(table);
     }
 
-    form.addEventListener('submit', async (event) => {
+    movimentacaoForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        const formData = new FormData(form);
+        const formData = new FormData(movimentacaoForm);
         const data = Object.fromEntries(formData.entries());
         try {
             const response = await fetch('http://localhost:3000/api/movimentacoes', {
@@ -186,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (!response.ok) throw new Error(`Erro ao enviar dados! Status: ${response.status}`);
             alert('Movimentação adicionada com sucesso!');
-            form.reset();
+            movimentacaoForm.reset();
             fetchMovimentacoes();
         } catch (error) {
             console.error('Erro ao enviar formulário:', error);
@@ -194,5 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    fetchMovimentacoes();
+    // Mostrar a página inicial
+    showPage('dashboard');
 });
