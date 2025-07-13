@@ -2,6 +2,39 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     const movimentacoesContainer = document.getElementById('movimentacoes-container');
+    const form = document.getElementById('add-movimentacao-form');
+
+    form.addEventListener('submit', async (event) => {
+        // Previne o comportamento padrão do formulário, que é recarregar a página
+        event.preventDefault();
+
+        // Cria um objeto com os dados dos campos do formulário
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        try {
+            const response = await fetch('http://localhost:3000/api/movimentacoes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Erro ao enviar dados! Status: ${response.status}`);
+            }
+
+            alert('Movimentação adicionada com sucesso!');
+            form.reset(); // Limpa o formulário
+            fetchMovimentacoes(); // Atualiza a tabela com os novos dados
+
+        } catch (error) {
+            console.error('Erro ao enviar formulário:', error);
+            alert('Falha ao adicionar movimentação.');
+        }
+    });
+
 
     // Função assíncrona para buscar os dados da nossa API
     async function fetchMovimentacoes() {

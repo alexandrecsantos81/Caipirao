@@ -8,10 +8,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- Middlewares Essenciais ---
-app.use(cors()); // Habilita o CORS para permitir pedidos de outras origens (o nosso frontend)
-app.use(express.json()); // Habilita o servidor a entender JSON em pedidos POST
+app.use(cors());
+app.use(express.json());
 
-// --- Configuração da Autenticação (igual ao readSheet.js) ---
+// --- Configuração da Autenticação ---
 // Lembre-se de ajustar o nome do seu ficheiro de credenciais se for diferente
 const KEYFILEPATH = path.join(__dirname, '../data/credenciais.json');
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
@@ -29,23 +29,40 @@ app.get('/status', (req, res) => {
     res.json({ status: 'ok', message: 'API está a funcionar' });
 });
 
-// Rota para adicionar dados na aba _Movimentacoes
+// Rota para LER dados da aba _Movimentacoes
+app.get('/api/movimentacoes', async (req, res) => {
+    try {
+        const client = await auth.getClient();
+        const googleSheets = google.sheets({ version: 'v4', auth: client });
+
+        const response = await googleSheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: '_Movimentacoes',
+        });
+
+        res.json(response.data.values);
+
+    } catch (error) {
+        console.error('Erro ao ler a aba _Movimentacoes:', error.message);
+        res.status(500).send('Erro no servidor ao ler a aba _Movimentacoes.');
+    }
+});
+
+// Rota para ADICIONAR dados na aba _Movimentacoes
 app.post('/api/movimentacoes', async (req, res) => {
     try {
         const client = await auth.getClient();
         const googleSheets = google.sheets({ version: 'v4', auth: client });
 
-        // Os dados a serem adicionados virão no corpo do pedido (req.body)
-        // A ordem no array deve corresponder à ordem das colunas na sua planilha
         const newRow = [
-            req.body.id_mov,      // Coluna A: ID Mov.
-            req.body.data,        // Coluna B: Data
-            req.body.tipo,        // Coluna C: Tipo (Entrada/Saída)
-            req.body.categoria,   // Coluna D: Categoria
-            req.body.descricao,   // Coluna E: Descrição
-            req.body.valor,       // Coluna F: Valor
-            req.body.responsavel, // Coluna G: Responsável
-            req.body.observacoes  // Coluna H: Observações
+            req.body.id_mov,
+            req.body.data,
+            req.body.tipo,
+            req.body.categoria,
+            req.body.descricao,
+            req.body.valor,
+            req.body.responsavel,
+            req.body.observacoes
         ];
 
         await googleSheets.spreadsheets.values.append({
