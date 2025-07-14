@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-const API_BASE_URL = 'https://api-caipirao-maurizzio-procopio.onrender.com';
+const API_BASE_URL = 'http://127.0.0.1:3000';
 
     // --- LÓGICA DE NAVEGAÇÃO ---
     const navLinks = document.querySelectorAll('.nav-link');
