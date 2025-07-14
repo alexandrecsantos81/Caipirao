@@ -100,6 +100,12 @@ app.post('/api/:sheetName', async (req, res) => {
         
         const newRow = headers.map(header => data[header] || '');
 
+        // --- ADICIONE ESTES LOGS PARA DEPURAR ---
+        console.log('Dados recebidos do formulário:', data);
+        console.log('Cabeçalhos da planilha:', headers);
+        console.log('Nova linha preparada para envio:', newRow);
+        // -----------------------------------------
+
         await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
             range: sheetName,
