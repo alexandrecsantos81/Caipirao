@@ -1,0 +1,17 @@
+# Ficheiro de Configuração do Netlify
+
+[build]
+  # Comando de build (não temos, então fica vazio)
+  command = ""
+  
+  # A pasta que o Netlify deve publicar.
+  # Como a base é 'frontend', o diretório de publicação é a própria raiz ('.')
+  publish = "."
+  
+  # A pasta base do seu site. O Netlify vai "entrar" aqui primeiro.
+  base = "frontend"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
