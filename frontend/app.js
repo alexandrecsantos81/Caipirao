@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-const API_BASE_URL = 'http://127.0.0.1:3000';
+const API_BASE_URL = 'https://api-caipirao.onrender.com';
 
     // --- LÓGICA DE NAVEGAÇÃO ---
     const navLinks = document.querySelectorAll('.nav-link');
