@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
-    
+const API_BASE_URL = 'https://api-caipirao-maurizzio-procopio.onrender.com';
+
     // --- LÓGICA DE NAVEGAÇÃO ---
     const navLinks = document.querySelectorAll('.nav-link');
     const pageContents = document.querySelectorAll('.page-content');
@@ -44,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchProdutos() {
         try {
-            const response = await fetch('http://localhost:3000/api/produtos');
+            const response = await fetch(`${API_BASE_URL}/api/produtos`);
             if (!response.ok) throw new Error(`Erro HTTP! Status: ${response.status}`);
             const data = await response.json();
             createTable(produtosContainer, data);
@@ -59,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(produtoForm);
         const data = Object.fromEntries(formData.entries());
         try {
-            const response = await fetch('http://localhost:3000/api/produtos', {
+            const response = await fetch(`${API_BASE_URL}/api/produtos`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
@@ -81,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchClientes() {
         try {
-            const response = await fetch('http://localhost:3000/api/clientes');
+            const response = await fetch(`${API_BASE_URL}/api/clientes`);
             if (!response.ok) throw new Error(`Erro HTTP! Status: ${response.status}`);
             const data = await response.json();
             createTable(clientesContainer, data);
@@ -96,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(clienteForm);
         const data = Object.fromEntries(formData.entries());
         try {
-            const response = await fetch('http://localhost:3000/api/clientes', {
+            const response = await fetch(`${API_BASE_URL}/api/clientes`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
@@ -127,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchMovimentacoes() {
         try {
-            const response = await fetch('http://localhost:3000/api/movimentacoes');
+            const response = await fetch(`${API_BASE_URL}/api/movimentacoes`);
             if (!response.ok) throw new Error(`Erro HTTP! Status: ${response.status}`);
             const data = await response.json();
             
@@ -245,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(movimentacaoForm);
         const data = Object.fromEntries(formData.entries());
         try {
-            const response = await fetch('http://localhost:3000/api/movimentacoes', {
+            const response = await fetch(`${API_BASE_URL}/api/movimentacoes`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
