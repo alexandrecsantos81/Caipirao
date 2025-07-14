@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-const API_BASE_URL = 'https://api-caipirao.onrender.com';
+const API_BASE_URL = 'https://api-caipirao-maurizzio.onrender.com';
 
     // --- LÓGICA DE NAVEGAÇÃO ---
     const navLinks = document.querySelectorAll('.nav-link');
