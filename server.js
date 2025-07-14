@@ -7,21 +7,29 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// --- Middlewares Essenciais ---
-app.use(cors());
+// --- Middlewares Essenciais para PRODUÇÃO ---
+
+// Configuração de CORS para permitir pedidos apenas do seu site no Netlify.
+// O URL 'https://guileless-gecko-d10e1f.netlify.app' é o que você forneceu.
+const corsOptions = {
+  origin: 'https://guileless-gecko-d10e1f.netlify.app', 
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions ));
+
 app.use(express.json());
 
-// --- Servindo os Ficheiros do Frontend ---
-// Como o server.js está na raiz, o caminho para 'frontend' é direto.
-app.use(express.static('frontend'));
+// A linha app.use(express.static(...)) foi REMOVIDA, pois não é necessária no Render.
 
 
 // --- Configuração da Autenticação ---
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
 
+// Lógica para usar as credenciais do Render (via variável de ambiente)
+// A opção de carregar o ficheiro local é mantida para facilitar testes futuros.
 const creds = process.env.GOOGLE_CREDENTIALS ?
     JSON.parse(process.env.GOOGLE_CREDENTIALS) :
-    require(path.join(__dirname, 'data/credenciais.json')); // Caminho direto para a pasta 'data'
+    require(path.join(__dirname, 'data/credenciais.json'));
 
 const auth = new google.auth.GoogleAuth({
     credentials: creds,
@@ -30,56 +38,17 @@ const auth = new google.auth.GoogleAuth({
 
 // --- ROTAS DA API ---
 
-// Rota para buscar dados de uma aba específica (Movimentações, Clientes, Produtos)
+// Rota para buscar dados de uma aba específica
 app.get('/api/:sheetName', async (req, res) => {
-    let { sheetName } = req.params; // Usamos 'let' para poder modificar o valor
-    const originalSheetName = sheetName; // Guardamos o nome original para o log de erro
-
-    // Validação para garantir que só aceitamos os nomes esperados do frontend
-    const allowedSheets = ['movimentacoes', 'clientes', 'produtos'];
-    if (!allowedSheets.includes(sheetName.toLowerCase())) {
-        return res.status(400).send('Nome da planilha inválido.');
-    }
-
-    // =================================================================
-    // TRADUÇÃO DOS NOMES PARA CORRESPONDER À PLANILHA - ESTA É A CORREÇÃO
-    // =================================================================
-    if (sheetName === 'movimentacoes') {
-        sheetName = '_Movimentacoes'; // Nome exato da sua aba na planilha
-    } else if (sheetName === 'clientes') {
-        sheetName = 'Clientes'; // Nome exato da sua aba na planilha
-    } else if (sheetName === 'produtos') {
-        sheetName = 'Produtos'; // Nome exato da sua aba na planilha
-    }
-    // =================================================================
-
-    try {
-        const sheets = google.sheets({ version: 'v4', auth });
-        const response = await sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID,
-            range: sheetName, // Usamos o nome corrigido/traduzido aqui
-        });
-        res.json(response.data.values);
-    } catch (error) {
-        // Usamos o nome original no log para facilitar a depuração
-        console.error(`Erro ao buscar dados da aba ${originalSheetName} (tentando como '${sheetName}'):`, error.message);
-        res.status(500).send(`Erro ao buscar dados da aba ${originalSheetName}.`);
-    }
-});
-
-// Rota para adicionar dados a uma aba específica
-app.post('/api/:sheetName', async (req, res) => {
-    let { sheetName } = req.params; // Usamos 'let'
-    const data = req.body;
+    let { sheetName } = req.params;
+    const originalSheetName = sheetName;
 
     const allowedSheets = ['movimentacoes', 'clientes', 'produtos'];
     if (!allowedSheets.includes(sheetName.toLowerCase())) {
         return res.status(400).send('Nome da planilha inválido.');
     }
 
-    // =================================================================
-    // ADICIONE A MESMA TRADUÇÃO AQUI
-    // =================================================================
+    // Tradução dos nomes para corresponder EXATAMENTE aos nomes das abas na planilha
     if (sheetName === 'movimentacoes') {
         sheetName = '_Movimentacoes';
     } else if (sheetName === 'clientes') {
@@ -87,7 +56,38 @@ app.post('/api/:sheetName', async (req, res) => {
     } else if (sheetName === 'produtos') {
         sheetName = 'Produtos';
     }
-    // =================================================================
+
+    try {
+        const sheets = google.sheets({ version: 'v4', auth });
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: sheetName,
+        });
+        res.json(response.data.values);
+    } catch (error) {
+        console.error(`Erro ao buscar dados da aba ${originalSheetName} (tentando como '${sheetName}'):`, error.message);
+        res.status(500).send(`Erro ao buscar dados da aba ${originalSheetName}.`);
+    }
+});
+
+// Rota para adicionar dados a uma aba específica
+app.post('/api/:sheetName', async (req, res) => {
+    let { sheetName } = req.params;
+    const data = req.body;
+
+    const allowedSheets = ['movimentacoes', 'clientes', 'produtos'];
+    if (!allowedSheets.includes(sheetName.toLowerCase())) {
+        return res.status(400).send('Nome da planilha inválido.');
+    }
+
+    // A mesma tradução para a rota de POST
+    if (sheetName === 'movimentacoes') {
+        sheetName = '_Movimentacoes';
+    } else if (sheetName === 'clientes') {
+        sheetName = 'Clientes';
+    } else if (sheetName === 'produtos') {
+        sheetName = 'Produtos';
+    }
 
     try {
         const sheets = google.sheets({ version: 'v4', auth });
@@ -102,7 +102,7 @@ app.post('/api/:sheetName', async (req, res) => {
 
         await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
-            range: sheetName, // Usa o nome corrigido
+            range: sheetName,
             valueInputOption: 'USER_ENTERED',
             resource: {
                 values: [newRow],
@@ -117,5 +117,5 @@ app.post('/api/:sheetName', async (req, res) => {
 
 
 app.listen(PORT, () => {
-    console.log(`Servidor a correr na porta ${PORT}. Aceda em http://127.0.0.1:${PORT}/index.html` );
+    console.log(`Servidor de produção a correr na porta ${PORT}`);
 });
