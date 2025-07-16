@@ -133,8 +133,13 @@ const API_BASE_URL = 'https://api-caipirao-maurizzio.onrender.com';
             const data = await response.json();
             
             const formattedData = formatData(data);
-            updateDashboard(formattedData);
-            createTable(movimentacoesContainer, data);
+            if (movimentacoesContainer) {
+                createTable(movimentacoesContainer, data);
+            }
+                
+            if (totalEntradasEl && totalSaidasEl && saldoAtualEl && categoryChartCanvas) {
+                updateDashboard(formattedData);
+            }
 
         } catch (error) {
             console.error('Erro ao buscar dados da API:', error);
