@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeModalBtn = document.getElementById('close-modal-btn');
     const cancelEditBtn = document.getElementById('cancel-edit-btn');
     let currentEditInfo = {};
+    let allMovimentacoes = [];
 
     // --- LÓGICA DE NOTIFICAÇÃO (TOAST) ---
     const notificationContainer = document.getElementById('notification-container');
@@ -94,8 +95,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             const formattedData = formatData(data);
             
-            if (entity === 'movimentacoes' && document.getElementById('page-dashboard').classList.contains('active')) {
-                updateDashboard(formattedData);
+            if (entity === 'movimentacoes') {
+                allMovimentacoes = formattedData;
+                if (document.getElementById('page-dashboard').classList.contains('active')) {
+                    updateDashboard(formattedData);
+                }
             }
             
             createTable(container, formattedData, entity, sheetId);
@@ -378,4 +382,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- INICIALIZAÇÃO DA APLICAÇÃO ---
     const initialPage = window.location.hash.substring(1) || 'dashboard';
     showPage(initialPage);
+});
+
+// --- LÓGICA DE FILTRAGEM DE MOVIMENTAÇÕES ---
+const searchInput = document.getElementById('search-movimentacoes');
+
+searchInput.addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    
+    if (!searchTerm) {
+        // Se a pesquisa estiver vazia, mostra todos os dados novamente
+        createTable(movimentacoesContainer, allMovimentacoes, 'movimentacoes', 1381900325);
+        return;
+    }
+
+    const filteredMovimentacoes = allMovimentacoes.filter(mov => {
+        // Procura o termo em todos os valores do objeto
+        return Object.values(mov).some(value => 
+            String(value).toLowerCase().includes(searchTerm)
+        );
+    });
+
+    // Cria a tabela apenas com os dados filtrados
+    createTable(movimentacoesContainer, filteredMovimentacoes, 'movimentacoes', 1381900325);
 });
