@@ -3,6 +3,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // URL da API do Backend
     const API_BASE_URL = 'https://api-caipirao-maurizzio-procopio.onrender.com';
 
+    // --- LÓGICA DE NOTIFICAÇÃO (TOAST) ---
+const notificationContainer = document.getElementById('notification-container');
+
+function showNotification(message, type = 'success') {
+    const toast = document.createElement('div');
+    const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+    
+    toast.className = `p-4 rounded-lg shadow-lg text-white ${bgColor} toast-in`;
+    toast.textContent = message;
+    
+    notificationContainer.appendChild(toast);
+    
+    // Remove a notificação após 3 segundos
+    setTimeout(() => {
+        toast.classList.remove('toast-in');
+        toast.classList.add('toast-out');
+        // Remove o elemento do DOM após a animação de saída
+        toast.addEventListener('animationend', () => {
+            toast.remove();
+        });
+    }, 3000);
+}
+
+
     // --- ELEMENTOS GLOBAIS DA PÁGINA ---
     const navLinks = document.querySelectorAll('.nav-link'  );
     const pageContents = document.querySelectorAll('.page-content');
@@ -97,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showPage(entity);
         } catch (error) {
             console.error(`Erro ao apagar ${entity}:`, error);
-            alert(`Falha ao apagar: ${error.message}`);
+            showNotification(`Falha ao apagar: ${error.message}`, 'error');
         }
     }
 
@@ -159,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const responseText = await response.text();
             if (!response.ok) {
-                alert(`Falha ao atualizar: ${responseText}`);
+                showNotification(`Falha ao atualizar: ${responseText}`, 'error');
                 return; 
             }
             // alert('Registo atualizado com sucesso!'); // REMOVIDO
@@ -258,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchFunction();
         } catch (error) {
             console.error(`Erro ao adicionar ${entity}:`, error);
-            alert(`Falha ao adicionar: ${error.message}`);
+            showNotification(`Falha ao adicionar: ${error.message}`, 'error');
         }
     }
 
