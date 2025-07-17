@@ -51,32 +51,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- FUNÇÕES CRUD (Create, Read, Update, Delete) ---
 
-    // Função genérica para buscar dados e criar tabelas (VERSÃO CORRIGIDA)
+    // Função genérica para buscar dados e criar tabelas
     async function fetchData(entity, container, sheetId) {
-        try {
-            // 1. Faz um pedido GET para buscar os dados da entidade correta
-            const response = await fetch(`${API_BASE_URL}/api/${entity}`);
-            
-            if (!response.ok) {
-                throw new Error(`Erro HTTP! Status: ${response.status}`);
-            }
-            
-            // 2. Converte a resposta para JSON
-            const data = await response.json();
-            const formattedData = formatData(data);
-            
-            // 3. Se estiver no dashboard, atualiza os cartões e o gráfico
-            if (entity === 'movimentacoes' && document.getElementById('page-dashboard').classList.contains('active')) {
-                updateDashboard(formattedData);
-            }
-            
-            // 4. Cria a tabela com os dados recebidos
-            createTable(container, formattedData, entity, sheetId);
+try {
+    const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData)
+    });
 
-        } catch (error) {
-            console.error(`Erro ao buscar ${entity}:`, error);
-            container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}.</p>`;
-        }
+    const responseText = await response.text();
+    console.log("Resposta da API:", response.status, responseText);
+
+    if (!response.ok) {
+        // Se a resposta não for OK, mostra o erro do servidor e para.
+        alert(`Falha ao atualizar: ${responseText}`);
+        return; 
+    }
+    
+    // Se a resposta for OK, mostra o sucesso.
+    alert('Registo atualizado com sucesso!');
+    closeEditModal();
+    showPage(entity);
+
+} catch (error) {
+    // Este catch agora só apanha erros de rede (ex: sem internet)
+    console.error(`Erro de rede ao atualizar ${entity}:`, error);
+    alert(`Erro de rede: ${error.message}`);
+}
     }
 
     // Funções específicas para cada entidade
@@ -93,7 +95,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function deleteRow(entity, rowIndex, sheetId) {
         if (!confirm('Tem a certeza de que quer apagar esta linha?')) return;
         try {
-            // A variável foi corrigida para rowIndex (com 'I' maiúsculo)
             const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, { 
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
