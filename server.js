@@ -24,6 +24,7 @@ app.use(express.json());
 
 // --- Configuração da Autenticação ---
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
+console.log('--- DIAGNÓSTICO: SPREADSHEET_ID a ser usado:', SPREADSHEET_ID, '---'); 
 
 // Lógica para usar as credenciais do Render (via variável de ambiente)
 // A opção de carregar o ficheiro local é mantida para facilitar testes futuros.
