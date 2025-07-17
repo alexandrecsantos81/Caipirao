@@ -75,13 +75,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Funções específicas para cada entidade
     const produtosContainer = document.getElementById('produtos-container');
-    function fetchProdutos() { fetchData('produtos', produtosContainer, 18808149); }
+    function fetchProdutos() { fetchData('produtos', produtosContainer, 'produtos'); } 
 
     const clientesContainer = document.getElementById('clientes-container');
-    function fetchClientes() { fetchData('clientes', clientesContainer, 1386962696); }
+    function fetchClientes() { fetchData('clientes', clientesContainer, 'clientes'); }
 
     const movimentacoesContainer = document.getElementById('movimentacoes-container');
-    function fetchMovimentacoes() { fetchData('movimentacoes', movimentacoesContainer, 1381900325); }
+    function fetchMovimentacoes() { fetchData('movimentacoes', movimentacoesContainer, 'movimentacoes'); }
 
     // Função para apagar uma linha
     async function deleteRow(entity, rowIndex, sheetId) {
