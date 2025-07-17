@@ -35,28 +35,49 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // --- FUNÇÃO GENÉRICA DE DELETE ---
-    async function deleteRow(entity, rowIndex, sheetId) {
-        if (!confirm(`Tem a certeza de que quer apagar esta linha?`)) return;
-        try {
-            // O índice da API do Sheets é baseado em 0, e a primeira linha de dados é a linha 2 da planilha (índice 1)
-            const apiRowIndex = rowIndex + 1;
-            const response = await fetch(`${API_BASE_URL}/api/${entity}/${apiRowIndex}`, { 
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sheetId: sheetId }) // Enviando o sheetId para o backend
-            });
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || `Erro ao apagar! Status: ${response.status}`);
-            }
-            alert(`${entity.slice(0, -1)} apagado com sucesso!`);
-            showPage(entity); // Recarrega os dados da página atual
-        } catch (error) {
-            console.error(`Erro ao apagar ${entity}:`, error);
-            alert(`Falha ao apagar: ${error.message}`);
+// --- FUNÇÃO GENÉRICA DE DELETE (VERSÃO DE DEPURAÇÃO) ---
+async function deleteRow(entity, rowIndex, sheetId) {
+    if (!confirm(`Tem a certeza de que quer apagar esta linha?`)) return;
+
+    // --- LOGS DE DIAGNÓSTICO ---
+    console.log("--- INICIANDO PROCESSO DE APAGAR ---");
+    console.log("Entidade:", entity);
+    console.log("Índice da Linha (do frontend):", rowIndex);
+    console.log("ID da Aba (Sheet ID):", sheetId);
+    
+    const apiUrl = `${API_BASE_URL}/api/${entity}/${rowIndex}`;
+    console.log("URL da API a ser chamada:", apiUrl);
+
+    const requestBody = { sheetId: sheetId };
+    console.log("Corpo do Pedido (Body) a ser enviado:", JSON.stringify(requestBody));
+    // -----------------------------
+
+    try {
+        const response = await fetch(apiUrl, { 
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+
+        // --- LOGS DA RESPOSTA ---
+        console.log("Resposta recebida da API. Status:", response.status);
+        const responseText = await response.text(); // Lê a resposta como texto
+        console.log("Texto da Resposta:", responseText);
+        // ------------------------
+
+        if (!response.ok) {
+            // O erro agora será mais detalhado, mostrando a mensagem do servidor
+            throw new Error(responseText || `Erro ao apagar! Status: ${response.status}`);
         }
+
+        alert(`Registo apagado com sucesso! (Resposta do servidor: ${responseText})`);
+        showPage(entity); // Recarrega os dados da página atual
+
+    } catch (error) {
+        console.error(`ERRO CRÍTICO AO APAGAR ${entity}:`, error);
+        alert(`FALHA AO APAGAR: ${error.message}`);
     }
+}
 
     // --- LÓGICA DA PÁGINA DE PRODUTOS ---
     const produtosContainer = document.getElementById('produtos-container');
