@@ -68,10 +68,37 @@ document.addEventListener('DOMContentLoaded', () => {
             targetLink.classList.add('active');
         }
         
-        if (pageId === 'dashboard') fetchMovimentacoes();
-        else if (pageId === 'movimentacoes') fetchMovimentacoes();
-        else if (pageId === 'clientes') fetchClientes();
-        else if (pageId === 'produtos') fetchProdutos();
+        // Carrega os dados da página selecionada
+        if (pageId === 'dashboard') {
+            fetchMovimentacoes();
+        } else if (pageId === 'movimentacoes') {
+            fetchMovimentacoes();
+            
+            // ===== LÓGICA DE FILTRAGEM MOVIDA PARA AQUI =====
+            const searchInput = document.getElementById('search-movimentacoes');
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                
+                if (!searchTerm) {
+                    createTable(movimentacoesContainer, allMovimentacoes, 'movimentacoes', 1381900325);
+                    return;
+                }
+
+                const filteredMovimentacoes = allMovimentacoes.filter(mov => {
+                    return Object.values(mov).some(value => 
+                        String(value).toLowerCase().includes(searchTerm)
+                    );
+                });
+
+                createTable(movimentacoesContainer, filteredMovimentacoes, 'movimentacoes', 1381900325);
+            });
+            // =================================================
+
+        } else if (pageId === 'clientes') {
+            fetchClientes();
+        } else if (pageId === 'produtos') {
+            fetchProdutos();
+        }
     }
 
     navLinks.forEach(link => {
@@ -384,26 +411,3 @@ document.addEventListener('DOMContentLoaded', () => {
     showPage(initialPage);
 });
 
-// --- LÓGICA DE FILTRAGEM DE MOVIMENTAÇÕES ---
-const searchInput = document.getElementById('search-movimentacoes');
-
-searchInput.addEventListener('input', (e) => {
-    console.log("A filtrar por:", e.target.value);
-    const searchTerm = e.target.value.toLowerCase();
-    
-    if (!searchTerm) {
-        // Se a pesquisa estiver vazia, mostra todos os dados novamente
-        createTable(movimentacoesContainer, allMovimentacoes, 'movimentacoes', 1381900325);
-        return;
-    }
-
-    const filteredMovimentacoes = allMovimentacoes.filter(mov => {
-        // Procura o termo em todos os valores do objeto
-        return Object.values(mov).some(value => 
-            String(value).toLowerCase().includes(searchTerm)
-        );
-    });
-
-    // Cria a tabela apenas com os dados filtrados
-    createTable(movimentacoesContainer, filteredMovimentacoes, 'movimentacoes', 1381900325);
-});
