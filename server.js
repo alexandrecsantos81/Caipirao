@@ -173,3 +173,4 @@ app.delete('/api/:sheetName/:rowIndex', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Servidor de produção a correr na porta ${PORT}`);
 });
+// Forçando a atualização para diagnóstico - [Data de hoje]
