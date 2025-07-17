@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = 'https://api-caipirao-maurizzio-procopio.onrender.com';
 
     // --- ELEMENTOS GLOBAIS DA PÁGINA ---
-    const navLinks = document.querySelectorAll('.nav-link' );
+    const navLinks = document.querySelectorAll('.nav-link'  );
     const pageContents = document.querySelectorAll('.page-content');
     const pageTitle = document.getElementById('page-title');
 
@@ -51,34 +51,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- FUNÇÕES CRUD (Create, Read, Update, Delete) ---
 
-    // Função genérica para buscar dados e criar tabelas
+    // Função genérica para buscar dados e criar tabelas (VERSÃO CORRIGIDA)
     async function fetchData(entity, container, sheetId) {
-try {
-    const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedData)
-    });
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/${entity}`);
+            if (!response.ok) {
+                throw new Error(`Erro HTTP! Status: ${response.status}`);
+            }
+            const data = await response.json();
+            const formattedData = formatData(data);
+            
+            if (entity === 'movimentacoes' && document.getElementById('page-dashboard').classList.contains('active')) {
+                updateDashboard(formattedData);
+            }
+            
+            createTable(container, formattedData, entity, sheetId);
 
-    const responseText = await response.text();
-    console.log("Resposta da API:", response.status, responseText);
-
-    if (!response.ok) {
-        // Se a resposta não for OK, mostra o erro do servidor e para.
-        alert(`Falha ao atualizar: ${responseText}`);
-        return; 
-    }
-    
-    // Se a resposta for OK, mostra o sucesso.
-    alert('Registo atualizado com sucesso!');
-    closeEditModal();
-    showPage(entity);
-
-} catch (error) {
-    // Este catch agora só apanha erros de rede (ex: sem internet)
-    console.error(`Erro de rede ao atualizar ${entity}:`, error);
-    alert(`Erro de rede: ${error.message}`);
-}
+        } catch (error) {
+            console.error(`Erro ao buscar ${entity}:`, error);
+            container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}.</p>`;
+        }
     }
 
     // Funções específicas para cada entidade
@@ -101,7 +93,7 @@ try {
                 body: JSON.stringify({ sheetId })
             });
             if (!response.ok) throw new Error(await response.text());
-            alert('Registo apagado com sucesso!');
+            // alert('Registo apagado com sucesso!'); // REMOVIDO
             showPage(entity);
         } catch (error) {
             console.error(`Erro ao apagar ${entity}:`, error);
@@ -111,8 +103,8 @@ try {
 
     // --- LÓGICA DO MODAL DE EDIÇÃO ---
 
-    function openEditModal(entity, rowIndex, data, sheetId) { // <-- PARÂMETRO ADICIONADO
-        currentEditInfo = { entity, rowIndex, sheetId }; // <-- sheetId ADICIONADO AO OBJETO
+    function openEditModal(entity, rowIndex, data, sheetId) {
+        currentEditInfo = { entity, rowIndex, sheetId };
         editFormFields.innerHTML = '';
 
         for (const key in data) {
@@ -152,19 +144,12 @@ try {
     editForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         
-        // 1. Extrai os dados do formulário
         const formData = new FormData(editForm);
         const updatedData = Object.fromEntries(formData.entries());
         
-        // 2. Extrai as informações guardadas (incluindo o sheetId)
         const { entity, rowIndex, sheetId } = currentEditInfo;
         
-        // 3. Adiciona o sheetId aos dados a serem enviados
         updatedData.sheetId = sheetId; 
-
-        console.log("--- INICIANDO PROCESSO DE EDITAR ---");
-        console.log("Enviando para:", `${API_BASE_URL}/api/${entity}/${rowIndex}`);
-        console.log("Dados:", JSON.stringify(updatedData));
 
         try {
             const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, {
@@ -173,14 +158,16 @@ try {
                 body: JSON.stringify(updatedData)
             });
             const responseText = await response.text();
-            console.log("Resposta da API:", response.status, responseText);
-            if (!response.ok) throw new Error(responseText);
-            alert('Registo atualizado com sucesso!');
+            if (!response.ok) {
+                alert(`Falha ao atualizar: ${responseText}`);
+                return; 
+            }
+            // alert('Registo atualizado com sucesso!'); // REMOVIDO
             closeEditModal();
             showPage(entity);
         } catch (error) {
-            console.error(`Erro ao atualizar ${entity}:`, error);
-            alert(`Falha ao atualizar: ${error.message}`);
+            console.error(`Erro de rede ao atualizar ${entity}:`, error);
+            alert(`Erro de rede: ${error.message}`);
         }
     });
 
@@ -239,7 +226,7 @@ try {
             const editButton = document.createElement('button');
             editButton.textContent = 'Editar';
             editButton.className = 'bg-blue-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-blue-600';
-            editButton.addEventListener('click', () => openEditModal(entityName, index, rowData, sheetId)); // Passa o sheetId
+            editButton.addEventListener('click', () => openEditModal(entityName, index, rowData, sheetId));
             tdBotao.appendChild(editButton);
             const deleteButton = document.createElement('button');
             deleteButton.textContent = 'Apagar';
@@ -255,7 +242,6 @@ try {
 
     // --- LÓGICA DOS FORMULÁRIOS DE ADIÇÃO ---
 
-    // Função genérica para submeter formulários de adição
     async function handleAddFormSubmit(event, entity, form, fetchFunction) {
         event.preventDefault();
         const formData = new FormData(form);
@@ -267,7 +253,7 @@ try {
                 body: JSON.stringify(data)
             });
             if (!response.ok) throw new Error(await response.text());
-            alert(`${entity.slice(0, -1)} adicionado com sucesso!`);
+            // alert(`${entity.slice(0, -1)} adicionado com sucesso!`); // REMOVIDO
             form.reset();
             fetchFunction();
         } catch (error) {
@@ -326,7 +312,7 @@ try {
         const labels = Object.keys(categoryData);
         const data = Object.values(categoryData);
         if (categoryChart) {
-            categoryChart.destroy(); // Destrói o gráfico antigo para evitar sobreposição
+            categoryChart.destroy();
         }
         const ctx = categoryChartCanvas.getContext('2d');
         categoryChart = new Chart(ctx, {
