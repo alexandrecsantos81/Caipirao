@@ -100,8 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LÓGICA DO MODAL DE EDIÇÃO ---
 
-    function openEditModal(entity, rowIndex, data) {
-        currentEditInfo = { entity, rowIndex };
+    function openEditModal(entity, rowIndex, data, sheetId) { // <-- PARÂMETRO ADICIONADO
+        currentEditInfo = { entity, rowIndex, sheetId }; // <-- sheetId ADICIONADO AO OBJETO
         editFormFields.innerHTML = '';
 
         for (const key in data) {
@@ -140,10 +140,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     editForm.addEventListener('submit', async (event) => {
         event.preventDefault();
+        
+        // 1. Extrai os dados do formulário
         const formData = new FormData(editForm);
         const updatedData = Object.fromEntries(formData.entries());
-        const { entity, rowIndex, sheetId } = currentEditInfo; // Extrai o sheetId
-        updatedData.sheetId = sheetId; // Adiciona o sheetId ao corpo do pedido
+        
+        // 2. Extrai as informações guardadas (incluindo o sheetId)
+        const { entity, rowIndex, sheetId } = currentEditInfo; 
+        
+        // 3. Adiciona o sheetId aos dados a serem enviados
+        updatedData.sheetId = sheetId; 
 
         console.log("--- INICIANDO PROCESSO DE EDITAR ---");
         console.log("Enviando para:", `${API_BASE_URL}/api/${entity}/${rowIndex}`);
@@ -166,6 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`Falha ao atualizar: ${error.message}`);
         }
     });
+
 
     // --- FUNÇÕES DE FORMATAÇÃO E CRIAÇÃO DE TABELA ---
 
