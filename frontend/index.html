@@ -167,6 +167,39 @@
         </div>
     </div>
 
+        <!-- ======================= MODAL DE EDIÇÃO ======================= -->
+    <!-- Fundo escuro do modal -->
+    <div id="edit-modal-backdrop" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <!-- Conteúdo do Modal -->
+        <div id="edit-modal" class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 transform transition-all -translate-y-full">
+            <!-- Cabeçalho do Modal -->
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h3 id="edit-modal-title" class="text-2xl font-semibold">Editar Registo</h3>
+                <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            </div>
+            <!-- Formulário de Edição (será preenchido dinamicamente) -->
+            <form id="edit-form">
+                <div id="edit-form-fields" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Os campos do formulário serão inseridos aqui pelo JavaScript -->
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" id="cancel-edit-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-md hover:bg-gray-300">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm hover:bg-blue-700">
+                        Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- =============================================================== -->
+
+    <script src="app.js"></script>
+</body>
+</html>
+
+
     <script src="app.js"></script>
 </body>
 </html>

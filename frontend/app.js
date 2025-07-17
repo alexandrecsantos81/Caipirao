@@ -252,12 +252,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.appendChild(td);
             });
             const tdBotao = document.createElement('td');
-            tdBotao.className = 'p-3 text-right';
+            tdBotao.className = 'p-3 text-right space-x-2'; // Adicionado space-x-2 para espaçamento
+
+            // Botão Editar
+            const editButton = document.createElement('button');
+            editButton.textContent = 'Editar';
+            editButton.className = 'bg-blue-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-blue-600';
+            // A função openEditModal será criada no Passo 3
+            editButton.addEventListener('click', () => openEditModal(entityName, index, rowData)); 
+            tdBotao.appendChild(editButton);
+
+            // Botão Apagar
             const deleteButton = document.createElement('button');
             deleteButton.textContent = 'Apagar';
             deleteButton.className = 'bg-red-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-red-600';
             deleteButton.addEventListener('click', () => deleteRow(entityName, index, sheetId));
             tdBotao.appendChild(deleteButton);
+
             row.appendChild(tdBotao);
             tbody.appendChild(row);
         });
@@ -282,4 +293,98 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     showPage('dashboard');
+});
+
+// --- LÓGICA DO MODAL DE EDIÇÃO ---
+
+const modalBackdrop = document.getElementById('edit-modal-backdrop');
+const modal = document.getElementById('edit-modal');
+const editForm = document.getElementById('edit-form');
+const editFormFields = document.getElementById('edit-form-fields');
+const closeModalBtn = document.getElementById('close-modal-btn');
+const cancelEditBtn = document.getElementById('cancel-edit-btn');
+
+let currentEditInfo = {}; // Para guardar a informação do registo a ser editado
+
+// Função para ABRIR o modal e preencher o formulário
+function openEditModal(entity, rowIndex, data) {
+    currentEditInfo = { entity, rowIndex }; // Guarda a entidade e o índice
+    editFormFields.innerHTML = ''; // Limpa campos antigos
+
+    // Cria dinamicamente os campos de input baseados nos dados
+    for (const key in data) {
+        // Não cria campo para o ID da planilha ou outros campos internos
+        if (key.toLowerCase() === 'sheetid') continue;
+
+        const fieldWrapper = document.createElement('div');
+        
+        const label = document.createElement('label');
+        label.for = `edit-${key}`;
+        label.className = 'block text-sm font-medium text-slate-700';
+        label.textContent = key;
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = `edit-${key}`;
+        input.name = key;
+        input.value = data[key];
+        input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm';
+
+        fieldWrapper.appendChild(label);
+        fieldWrapper.appendChild(input);
+        editFormFields.appendChild(fieldWrapper);
+    }
+
+    // Mostra o modal com uma animação
+    modalBackdrop.classList.remove('hidden');
+    modalBackdrop.classList.add('flex');
+    setTimeout(() => {
+        modal.classList.remove('-translate-y-full');
+    }, 50);
+}
+
+// Função para FECHAR o modal
+function closeEditModal() {
+    modal.classList.add('-translate-y-full');
+    setTimeout(() => {
+        modalBackdrop.classList.add('hidden');
+        modalBackdrop.classList.remove('flex');
+    }, 300); // Tempo da animação
+}
+
+// Event listener para o botão de fechar
+closeModalBtn.addEventListener('click', closeEditModal);
+cancelEditBtn.addEventListener('click', closeEditModal);
+
+// Event listener para o formulário de edição
+editForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    
+    const formData = new FormData(editForm);
+    const updatedData = Object.fromEntries(formData.entries());
+    
+    const { entity, rowIndex } = currentEditInfo;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedData)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `Erro ao atualizar! Status: ${response.status}`);
+        }
+
+        alert('Registo atualizado com sucesso!');
+        closeEditModal();
+        
+        // Recarrega os dados da página atual para mostrar a alteração
+        showPage(entity); 
+
+    } catch (error) {
+        console.error(`Erro ao atualizar ${entity}:`, error);
+        alert(`Falha ao atualizar: ${error.message}`);
+    }
 });
