@@ -112,33 +112,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- FUNÇÕES CRUD (Create, Read, Update, Delete) ---
 
-    async function fetchData(entity, container, sheetId) {
-        showLoader();
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/${entity}`);
-            if (!response.ok) {
-                throw new Error(`Erro HTTP! Status: ${response.status}`);
-            }
-            const data = await response.json();
-            const formattedData = formatData(data);
-            
-            if (entity === 'movimentacoes') {
-                allMovimentacoes = formattedData;
-                if (document.getElementById('page-dashboard').classList.contains('active')) {
-                    updateDashboard(formattedData);
-                }
-            }
-            
-            createTable(container, formattedData, entity, sheetId);
-
-        } catch (error) {
-            console.error(`Erro ao buscar ${entity}:`, error);
-            container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}.</p>`;
-            showNotification(`Falha ao carregar dados de ${entity}`, 'error');
-        } finally {
-            hideLoader();
+async function fetchData(entity, container, sheetId) {
+    showLoader();
+    try {
+        // ESTA É A LINHA CORRETA PARA BUSCAR DADOS (GET)
+        const response = await fetch(`${API_BASE_URL}/api/${entity}`);
+        
+        if (!response.ok) {
+            throw new Error(`Erro HTTP! Status: ${response.status}`);
         }
+        const data = await response.json();
+        const formattedData = formatData(data);
+        
+        if (entity === 'movimentacoes') {
+            allMovimentacoes = formattedData; // Guarda os dados originais
+            if (document.getElementById('page-dashboard').classList.contains('active')) {
+                updateDashboard(formattedData);
+            }
+        }
+        
+        createTable(container, formattedData, entity, sheetId);
+
+    } catch (error) {
+        console.error(`Erro ao buscar ${entity}:`, error);
+        container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}.</p>`;
+        showNotification(`Falha ao carregar dados de ${entity}`, 'error');
+    } finally {
+        hideLoader();
     }
+}
 
     const produtosContainer = document.getElementById('produtos-container');
     function fetchProdutos() { fetchData('produtos', produtosContainer, 18808149); }
