@@ -100,7 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ sheetId })
             });
             if (!response.ok) throw new Error(await response.text());
-            alert('Registo apagado com sucesso!');
             showPage(entity);
         } catch (error) {
             console.error(`Erro ao apagar ${entity}:`, error);
@@ -174,7 +173,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const responseText = await response.text();
             console.log("Resposta da API:", response.status, responseText);
             if (!response.ok) throw new Error(responseText);
-            alert('Registo atualizado com sucesso!');
             closeEditModal();
             showPage(entity);
         } catch (error) {
@@ -266,7 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(data)
             });
             if (!response.ok) throw new Error(await response.text());
-            alert(`${entity.slice(0, -1)} adicionado com sucesso!`);
             form.reset();
             fetchFunction();
         } catch (error) {
