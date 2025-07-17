@@ -142,7 +142,8 @@ document.addEventListener('DOMContentLoaded', () => {
         event.preventDefault();
         const formData = new FormData(editForm);
         const updatedData = Object.fromEntries(formData.entries());
-        const { entity, rowIndex } = currentEditInfo;
+        const { entity, rowIndex, sheetId } = currentEditInfo; // Extrai o sheetId
+        updatedData.sheetId = sheetId; // Adiciona o sheetId ao corpo do pedido
 
         console.log("--- INICIANDO PROCESSO DE EDITAR ---");
         console.log("Enviando para:", `${API_BASE_URL}/api/${entity}/${rowIndex}`);
@@ -220,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const editButton = document.createElement('button');
             editButton.textContent = 'Editar';
             editButton.className = 'bg-blue-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-blue-600';
-            editButton.addEventListener('click', () => openEditModal(entityName, index, rowData));
+            editButton.addEventListener('click', () => openEditModal(entityName, index, rowData, sheetId)); // Passa o sheetId
             tdBotao.appendChild(editButton);
             const deleteButton = document.createElement('button');
             deleteButton.textContent = 'Apagar';

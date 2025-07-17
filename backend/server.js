@@ -176,10 +176,11 @@ app.delete('/api/:sheetName/:rowIndex', async (req, res) => {
     }
 });
 
-// Rota para ATUALIZAR (EDITAR) uma linha existente
+// Rota para ATUALIZAR (EDITAR) uma linha existente (VERSÃO FINAL E ROBUSTA)
 app.put('/api/:sheetName/:rowIndex', async (req, res) => {
-    let { sheetName, rowIndex } = req.params; // <-- LINHA CORRIGIDA
+    const { sheetName, rowIndex } = req.params;
     const updatedData = req.body;
+    const { sheetId } = updatedData; // Vamos precisar do sheetId também
 
     // Validação de segurança
     const allowedSheets = ['movimentacoes', 'clientes', 'produtos'];
@@ -187,11 +188,9 @@ app.put('/api/:sheetName/:rowIndex', async (req, res) => {
         return res.status(400).send('Nome da planilha inválido.');
     }
 
-    // Tradução dos nomes para corresponder EXATAMENTE aos nomes das abas
-    let actualSheetName = '';
-    if (sheetName === 'movimentacoes') actualSheetName = '_Movimentacoes';
-    else if (sheetName === 'clientes') actualSheetName = 'Clientes';
-    else if (sheetName === 'produtos') actualSheetName = 'Produtos';
+    if (sheetId === undefined) {
+        return res.status(400).send('O ID da aba (sheetId) é necessário para a edição.');
+    }
 
     try {
         const sheets = google.sheets({ version: 'v4', auth });
@@ -199,39 +198,50 @@ app.put('/api/:sheetName/:rowIndex', async (req, res) => {
         // Busca os cabeçalhos para garantir a ordem correta dos dados
         const headerResponse = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: `${actualSheetName}!1:1`,
+            range: `${sheetName}!1:1`, // Usamos o nome da aba aqui
         });
         const headers = headerResponse.data.values[0];
 
         // Mapeia os dados atualizados para a mesma ordem dos cabeçalhos
-        const updatedRow = headers.map(header => updatedData[header] || '');
+        const updatedRowValues = headers.map(header => ({
+            userEnteredValue: {
+                stringValue: updatedData[header] || ''
+            }
+        }));
 
-        // Calcula o número da linha na planilha.
-        // O índice do frontend (rowIndex) começa em 0.
-        // A primeira linha de dados está na linha 2 da planilha.
-        // Portanto, a linha a ser atualizada é rowIndex + 2.
-        const sheetRowNumber = parseInt(rowIndex, 10) + 2;
-
-        // Constrói o range para a atualização, ex: 'Produtos!A3'
-        // Assumimos que os dados começam na coluna A.
-        const range = `${actualSheetName}!A${sheetRowNumber}`;
-
-        await sheets.spreadsheets.values.update({
+        const request = {
             spreadsheetId: SPREADSHEET_ID,
-            range: range,
-            valueInputOption: 'USER_ENTERED',
             resource: {
-                values: [updatedRow],
-            },
-        });
+                requests: [
+                    {
+                        updateCells: {
+                            start: {
+                                sheetId: parseInt(sheetId, 10),
+                                rowIndex: parseInt(rowIndex, 10) + 1, // +1 porque a primeira linha de dados é o índice 1 para a API
+                                columnIndex: 0 // Começa na primeira coluna (A)
+                            },
+                            rows: [
+                                {
+                                    values: updatedRowValues
+                                }
+                            ],
+                            fields: 'userEnteredValue'
+                        }
+                    }
+                ]
+            }
+        };
+
+        await sheets.spreadsheets.batchUpdate(request);
 
         res.status(200).send('Registo atualizado com sucesso!');
 
     } catch (error) {
-        console.error(`Erro ao atualizar registo na aba ${sheetName}:`, error.message);
+        console.error(`Erro ao atualizar registo na aba ${sheetName}:`, error.message, error.stack);
         res.status(500).send(`Erro ao atualizar registo: ${error.message}`);
     }
 });
+
 
 
 
