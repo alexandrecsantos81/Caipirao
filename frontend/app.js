@@ -3,32 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // URL da API do Backend
     const API_BASE_URL = 'https://api-caipirao-maurizzio-procopio.onrender.com';
 
-    // --- LÓGICA DE NOTIFICAÇÃO (TOAST) ---
-const notificationContainer = document.getElementById('notification-container');
-
-function showNotification(message, type = 'success') {
-    const toast = document.createElement('div');
-    const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
-    
-    toast.className = `p-4 rounded-lg shadow-lg text-white ${bgColor} toast-in`;
-    toast.textContent = message;
-    
-    notificationContainer.appendChild(toast);
-    
-    // Remove a notificação após 3 segundos
-    setTimeout(() => {
-        toast.classList.remove('toast-in');
-        toast.classList.add('toast-out');
-        // Remove o elemento do DOM após a animação de saída
-        toast.addEventListener('animationend', () => {
-            toast.remove();
-        });
-    }, 3000);
-}
-
-
     // --- ELEMENTOS GLOBAIS DA PÁGINA ---
-    const navLinks = document.querySelectorAll('.nav-link'  );
+    const navLinks = document.querySelectorAll('.nav-link' );
     const pageContents = document.querySelectorAll('.page-content');
     const pageTitle = document.getElementById('page-title');
 
@@ -39,7 +15,41 @@ function showNotification(message, type = 'success') {
     const editFormFields = document.getElementById('edit-form-fields');
     const closeModalBtn = document.getElementById('close-modal-btn');
     const cancelEditBtn = document.getElementById('cancel-edit-btn');
-    let currentEditInfo = {}; // Guarda a informação do registo a ser editado
+    let currentEditInfo = {};
+
+    // --- LÓGICA DE NOTIFICAÇÃO (TOAST) ---
+    const notificationContainer = document.getElementById('notification-container');
+
+    function showNotification(message, type = 'success') {
+        const toast = document.createElement('div');
+        const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+        
+        toast.className = `p-4 rounded-lg shadow-lg text-white ${bgColor} toast-in`;
+        toast.textContent = message;
+        
+        notificationContainer.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.remove('toast-in');
+            toast.classList.add('toast-out');
+            toast.addEventListener('animationend', () => {
+                toast.remove();
+            });
+        }, 3000);
+    }
+
+    // --- LÓGICA DO INDICADOR DE CARREGAMENTO ---
+    const loadingOverlay = document.getElementById('loading-overlay');
+
+    function showLoader() {
+        loadingOverlay.classList.remove('hidden');
+        loadingOverlay.classList.add('flex');
+    }
+
+    function hideLoader() {
+        loadingOverlay.classList.add('hidden');
+        loadingOverlay.classList.remove('flex');
+    }
 
     // --- LÓGICA DE NAVEGAÇÃO ---
     function showPage(pageId) {
@@ -57,7 +67,6 @@ function showNotification(message, type = 'success') {
             targetLink.classList.add('active');
         }
         
-        // Carrega os dados da página selecionada
         if (pageId === 'dashboard') fetchMovimentacoes();
         else if (pageId === 'movimentacoes') fetchMovimentacoes();
         else if (pageId === 'clientes') fetchClientes();
@@ -68,15 +77,15 @@ function showNotification(message, type = 'success') {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const pageId = link.getAttribute('href').substring(1);
-            window.location.hash = pageId; // Atualiza a URL para navegação
+            window.location.hash = pageId;
             showPage(pageId);
         });
     });
 
     // --- FUNÇÕES CRUD (Create, Read, Update, Delete) ---
 
-    // Função genérica para buscar dados e criar tabelas (VERSÃO CORRIGIDA)
     async function fetchData(entity, container, sheetId) {
+        showLoader();
         try {
             const response = await fetch(`${API_BASE_URL}/api/${entity}`);
             if (!response.ok) {
@@ -94,10 +103,12 @@ function showNotification(message, type = 'success') {
         } catch (error) {
             console.error(`Erro ao buscar ${entity}:`, error);
             container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}.</p>`;
+            showNotification(`Falha ao carregar dados de ${entity}`, 'error');
+        } finally {
+            hideLoader();
         }
     }
 
-    // Funções específicas para cada entidade
     const produtosContainer = document.getElementById('produtos-container');
     function fetchProdutos() { fetchData('produtos', produtosContainer, 18808149); }
 
@@ -107,9 +118,9 @@ function showNotification(message, type = 'success') {
     const movimentacoesContainer = document.getElementById('movimentacoes-container');
     function fetchMovimentacoes() { fetchData('movimentacoes', movimentacoesContainer, 1381900325); }
 
-    // Função para apagar uma linha
     async function deleteRow(entity, rowIndex, sheetId) {
         if (!confirm('Tem a certeza de que quer apagar esta linha?')) return;
+        showLoader();
         try {
             const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, { 
                 method: 'DELETE',
@@ -117,11 +128,13 @@ function showNotification(message, type = 'success') {
                 body: JSON.stringify({ sheetId })
             });
             if (!response.ok) throw new Error(await response.text());
-            // alert('Registo apagado com sucesso!'); // REMOVIDO
+            showNotification('Registo apagado com sucesso!', 'success');
             showPage(entity);
         } catch (error) {
             console.error(`Erro ao apagar ${entity}:`, error);
             showNotification(`Falha ao apagar: ${error.message}`, 'error');
+        } finally {
+            hideLoader();
         }
     }
 
@@ -167,6 +180,7 @@ function showNotification(message, type = 'success') {
 
     editForm.addEventListener('submit', async (event) => {
         event.preventDefault();
+        showLoader();
         
         const formData = new FormData(editForm);
         const updatedData = Object.fromEntries(formData.entries());
@@ -186,15 +200,16 @@ function showNotification(message, type = 'success') {
                 showNotification(`Falha ao atualizar: ${responseText}`, 'error');
                 return; 
             }
-            // alert('Registo atualizado com sucesso!'); // REMOVIDO
+            showNotification('Registo atualizado com sucesso!', 'success');
             closeEditModal();
             showPage(entity);
         } catch (error) {
             console.error(`Erro de rede ao atualizar ${entity}:`, error);
-            alert(`Erro de rede: ${error.message}`);
+            showNotification(`Erro de rede: ${error.message}`, 'error');
+        } finally {
+            hideLoader();
         }
     });
-
 
     // --- FUNÇÕES DE FORMATAÇÃO E CRIAÇÃO DE TABELA ---
 
@@ -268,6 +283,8 @@ function showNotification(message, type = 'success') {
 
     async function handleAddFormSubmit(event, entity, form, fetchFunction) {
         event.preventDefault();
+        showLoader();
+        
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
         try {
@@ -277,12 +294,14 @@ function showNotification(message, type = 'success') {
                 body: JSON.stringify(data)
             });
             if (!response.ok) throw new Error(await response.text());
-            // alert(`${entity.slice(0, -1)} adicionado com sucesso!`); // REMOVIDO
+            showNotification(`${entity.slice(0, -1)} adicionado com sucesso!`, 'success');
             form.reset();
             fetchFunction();
         } catch (error) {
             console.error(`Erro ao adicionar ${entity}:`, error);
             showNotification(`Falha ao adicionar: ${error.message}`, 'error');
+        } finally {
+            hideLoader();
         }
     }
 
