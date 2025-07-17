@@ -95,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function deleteRow(entity, rowIndex, sheetId) {
         if (!confirm('Tem a certeza de que quer apagar esta linha?')) return;
         try {
+            // A variável foi corrigida para rowIndex (com 'I' maiúsculo)
             const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, { 
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
