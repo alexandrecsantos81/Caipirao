@@ -142,11 +142,12 @@ app.delete('/api/:sheetName/:rowIndex', async (req, res) => {
     try {
         const sheets = google.sheets({ version: 'v4', auth });
         
-        // CORREÇÃO: O índice da API é baseado em 0, mas a primeira linha de dados
-        // na planilha é a linha 2. Portanto, o índice real é o rowIndex + 1.
-        const apiRowIndex = parseInt(rowIndex, 10) + 1;
+        // O índice da API é baseado em 0. A primeira linha de dados (linha 2 da planilha)
+        // corresponde ao rowIndex 0 que vem do frontend.
+        // Portanto, o startIndex para a API é o rowIndex + 1.
+        const apiStartIndex = parseInt(rowIndex, 10) + 1;
 
-        await sheets.spreadsheets.batchUpdate({
+        const request = {
             spreadsheetId: SPREADSHEET_ID,
             resource: {
                 requests: [
@@ -155,20 +156,23 @@ app.delete('/api/:sheetName/:rowIndex', async (req, res) => {
                             range: {
                                 sheetId: parseInt(sheetId, 10),
                                 dimension: 'ROWS',
-                                startIndex: apiRowIndex, // <-- CORREÇÃO APLICADA
-                                endIndex: apiRowIndex + 1  // <-- CORREÇÃO APLICADA
+                                startIndex: apiStartIndex,
+                                endIndex: apiStartIndex + 1
                             }
                         }
                     }
                 ]
             }
-        });
+        };
 
-        res.status(200).send(`Linha apagada com sucesso da aba ${sheetName}!`);
+        await sheets.spreadsheets.batchUpdate(request);
+
+        // Envia uma resposta de sucesso simples, sem JSON.
+        res.status(200).send(`Linha ${rowIndex} apagada com sucesso da aba ${sheetName}.`);
 
     } catch (error) {
-        console.error(`Erro ao apagar linha da aba ${sheetName}:`, error.message);
-        res.status(500).send(`Erro no servidor ao apagar a linha.`);
+        console.error(`Erro ao apagar linha da aba ${sheetName}:`, error.message, error.stack);
+        res.status(500).send(`Erro no servidor ao apagar a linha: ${error.message}`);
     }
 });
 
