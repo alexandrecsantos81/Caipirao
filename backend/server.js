@@ -178,7 +178,7 @@ app.delete('/api/:sheetName/:rowIndex', async (req, res) => {
 
 // Rota para ATUALIZAR (EDITAR) uma linha existente
 app.put('/api/:sheetName/:rowIndex', async (req, res) => {
-    let { sheetName, rowIndex } = req.params;
+    let { sheetName, rowIndex } = req.params; // <-- LINHA CORRIGIDA
     const updatedData = req.body;
 
     // Validação de segurança
