@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "frigorifico-caipirao-novo",
+  "private_key_id": "0ff7365c8dfa4c99b8a889e99b4dd1bfac730c1c",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDCqlIhI7yMC8Nn\n/MvkvIM7fnY8A88T9vJZFD9s+i/UtN+bvCkIoF4+QovNz8ZynBwRaBc5z7j8E29P\ne1mzVopGRFicWSN03COBDKLsKe/93quFzcXj1yHP/pAs9bXedIHAudampcv/BRs3\nvucjJzu6dNrO8NVqhAMS3xslyGow43nI6XDBYV4ii3aydJJiI+UzRrkwQjlfgb3n\nN2HR2khf6bo+KVVD4g2ceIRfxbdi/MxjEQY71BWIScfDUMtfPA7+p29tOUVH4Aoi\nroIekT5zbHbVZ3Dlxz/+TqizkaYm8z5jMzjlbuQgsn5NGX8SAS80RrQq8wV+n5bA\nEkStxKx9AgMBAAECggEADB5uXoHLCyzwTVj/mI3j3aBR3Aqgqa2GCOWpzS8GK0fX\nY+qi41aYh2e9LGLzB8+QL8U7LO4xpf/PvjL/spqAoT9ABPvHqU7LJw2SVwGFX1it\ndPcKitSp1jkS4LmrSN4X9deb9WP8/zNiLmZEHXwjy8fal2eG4cq2JkadegywD7r9\n2YeJjknwc4D9b7Ak7vxhzsnPdJDcEWp6LdM+8kDFfq39oTofDeHHJpSFuu9P90hU\nxmsnrb3csCj359y85cAkiOgzGozLO0dvc0CpWJkNRAsVibEo4bnqPXBUW4SC5GuI\nq9WMOYPCZgj+/JgatRfDghO9B3r/juhVDpe0d2S4QQKBgQDnkQegNZLF3rxeSpOq\nyK2Qz/L3QYAt290n4jG8c3+2Gg8EHWowEtRyi2ASQAhPB9+Ob+D7x7mUG8aLGcBw\nRKQZcWd50wgE3S7cvpSVKCVoKRoOIl/lRP0wSt/pMlTPh4yBvZAyiQ7MqXXN16kn\nXqS0U2IJi7rkl16+wXRKS2zs4wKBgQDXNIhFo66MYNUPU/OwcDgJZZwmbTt6zoa+\nqNKmBwfDf9zzaozuekmGdsNYDltX4R5+R4V+Wadnci5mxmLheSXe5czCOtOGL0sb\np1tk2ik12FrX1b8aAP2DscP3/CndFvd77wjrUFRNEB9CrjeqMrRJEaF1ts9Hb0qi\nWi1YzzGfHwKBgEwLkqeIMGUOmmmUsB27vVP7Fl0gg4mL1HrOi2rJuz0AHcJKLp8O\n7/mVz7zujkv11/KcxxOoKUd8P51anZnA0OsSFNsq9E00nbkcVQsOngowxT+zBi7y\nkvsS+6lHQBbO+tN4fyw5WkTXuboZgpFNQWV+pIlh+8Qp+ZFHUns7fc/lAoGAZf4L\np5WPoBA0afNLxw8oP6vceYnDasx+p9WzH+StFUaAHQ0ehdeHCSc4JX+IYvnaTdbv\nuZYb9Lb0rtjO/DVCcYVPqa3fmfTID+8dLYsHhPFo/GndDCH0BHo3ekwUOygrWp1L\nCNslWPCPIDcZQpyNPSQR9YwSaLSiFpfObgykY9kCgYAriJfWt4ZBFZfmbtCvqKqk\n6uEgVJjX4Z+bgSKbgGXLKyfGMtk4l5+ckG4BSRi/lgT5HgNRy9Q8T0njjDEP0A+w\nsXq4pOzVvBDk7c+zTnAC045PKq9KY/ztrcLwzcnh2TsazcoYo8F0z6H7vlZD1q/r\nZ9lgUZ56pTqIbwvzJXNTXQ==\n-----END PRIVATE KEY-----\n",
+  "client_email": "leitor-planilha-caipirao@frigorifico-caipirao-novo.iam.gserviceaccount.com",
+  "client_id": "113201880202773672551",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/leitor-planilha-caipirao%40frigorifico-caipirao-novo.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

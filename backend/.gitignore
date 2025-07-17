@@ -1,7 +1,0 @@
-# Dependências do Node
-node_modules/
-
-# Ficheiros de ambiente
-.env
-.json
-
