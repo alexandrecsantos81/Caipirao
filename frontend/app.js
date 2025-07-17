@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const updatedData = Object.fromEntries(formData.entries());
         
         // 2. Extrai as informações guardadas (incluindo o sheetId)
-        const { entity, rowIndex, sheetId } = currentEditInfo; 
+        const { entity, rowIndex, sheetId } = currentEditInfo;
         
         // 3. Adiciona o sheetId aos dados a serem enviados
         updatedData.sheetId = sheetId; 
