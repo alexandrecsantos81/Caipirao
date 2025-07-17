@@ -12,8 +12,10 @@ const PORT = process.env.PORT || 3000;
 // Configuração de CORS para permitir pedidos apenas do seu site no Netlify.
 // O URL 'https://guileless-gecko-d10e1f.netlify.app' é o que você forneceu.
 const corsOptions = {
-  origin: 'https://caipiraosys.netlify.app', 
-  optionsSuccessStatus: 200
+  origin: 'https://caipiraosys.netlify.app', // URL EXATO do seu frontend
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE", // Permite todos os métodos
+  credentials: true,
+  optionsSuccessStatus: 204
 };
 app.use(cors(corsOptions ));
 
