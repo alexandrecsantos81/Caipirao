@@ -281,6 +281,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LÓGICA DOS FORMULÁRIOS DE ADIÇÃO ---
 
+    // Pega a referência dos formulários
+    const produtoForm = document.getElementById('add-produto-form');
+    const clienteForm = document.getElementById('add-cliente-form');
+    const movimentacaoForm = document.getElementById('add-movimentacao-form');
+
+    // Configura os listeners UMA ÚNICA VEZ
+    produtoForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'produtos', produtoForm, fetchProdutos));
+    clienteForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'clientes', clienteForm, fetchClientes));
+    movimentacaoForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'movimentacoes', movimentacaoForm, fetchMovimentacoes));
+
+    // Função genérica para submeter formulários de adição
     async function handleAddFormSubmit(event, entity, form, fetchFunction) {
         event.preventDefault();
         showLoader();
@@ -304,15 +315,6 @@ document.addEventListener('DOMContentLoaded', () => {
             hideLoader();
         }
     }
-
-    const produtoForm = document.getElementById('add-produto-form');
-    produtoForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'produtos', produtoForm, fetchProdutos));
-
-    const clienteForm = document.getElementById('add-cliente-form');
-    clienteForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'clientes', clienteForm, fetchClientes));
-
-    const movimentacaoForm = document.getElementById('add-movimentacao-form');
-    movimentacaoForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'movimentacoes', movimentacaoForm, fetchMovimentacoes));
 
     // --- LÓGICA DO DASHBOARD ---
     const totalEntradasEl = document.getElementById('total-entradas');
