@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     
     // ATENÇÃO: Substitua pelo seu URL real do Render
-    const API_BASE_URL = 'https://api-caipirao.onrender.com';
+    const API_BASE_URL = 'https://api-caipirao-maurizzio-procopio.onrender.com';
 
     // --- LÓGICA DE NAVEGAÇÃO ---
     const navLinks = document.querySelectorAll('.nav-link');
