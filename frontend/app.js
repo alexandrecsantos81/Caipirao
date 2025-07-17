@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeModalBtn = document.getElementById('close-modal-btn');
     const cancelEditBtn = document.getElementById('cancel-edit-btn');
     let currentEditInfo = {};
-    let allMovimentacoes = []; // Guarda os dados originais das movimentações
+    let allMovimentacoes = [];
 
     // --- LÓGICA DE NOTIFICAÇÃO (TOAST) ---
     const notificationContainer = document.getElementById('notification-container');
@@ -68,36 +68,10 @@ document.addEventListener('DOMContentLoaded', () => {
             targetLink.classList.add('active');
         }
         
-        // Carrega os dados e configura listeners específicos da página
-        if (pageId === 'dashboard') {
-            fetchMovimentacoes();
-        } else if (pageId === 'movimentacoes') {
-            fetchMovimentacoes();
-            
-            // LÓGICA DE FILTRAGEM INICIALIZADA AQUI
-            const searchInput = document.getElementById('search-movimentacoes');
-            searchInput.addEventListener('input', (e) => {
-                const searchTerm = e.target.value.toLowerCase();
-                
-                if (!searchTerm) {
-                    createTable(movimentacoesContainer, allMovimentacoes, 'movimentacoes', 1381900325);
-                    return;
-                }
-
-                const filteredMovimentacoes = allMovimentacoes.filter(mov => {
-                    return Object.values(mov).some(value => 
-                        String(value).toLowerCase().includes(searchTerm)
-                    );
-                });
-
-                createTable(movimentacoesContainer, filteredMovimentacoes, 'movimentacoes', 1381900325);
-            });
-
-        } else if (pageId === 'clientes') {
-            fetchClientes();
-        } else if (pageId === 'produtos') {
-            fetchProdutos();
-        }
+        if (pageId === 'dashboard') fetchMovimentacoes();
+        else if (pageId === 'movimentacoes') fetchMovimentacoes();
+        else if (pageId === 'clientes') fetchClientes();
+        else if (pageId === 'produtos') fetchProdutos();
     }
 
     navLinks.forEach(link => {
@@ -122,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const formattedData = formatData(data);
             
             if (entity === 'movimentacoes') {
-                allMovimentacoes = formattedData; // Guarda os dados originais
+                allMovimentacoes = formattedData;
                 if (document.getElementById('page-dashboard').classList.contains('active')) {
                     updateDashboard(formattedData);
                 }
@@ -311,14 +285,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LÓGICA DOS FORMULÁRIOS DE ADIÇÃO ---
 
+    // Pega a referência dos formulários
     const produtoForm = document.getElementById('add-produto-form');
     const clienteForm = document.getElementById('add-cliente-form');
     const movimentacaoForm = document.getElementById('add-movimentacao-form');
 
+    // Configura os listeners UMA ÚNICA VEZ
     produtoForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'produtos', produtoForm, fetchProdutos));
     clienteForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'clientes', clienteForm, fetchClientes));
     movimentacaoForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'movimentacoes', movimentacaoForm, fetchMovimentacoes));
 
+    // Função genérica para submeter formulários de adição
     async function handleAddFormSubmit(event, entity, form, fetchFunction) {
         event.preventDefault();
         showLoader();
@@ -405,4 +382,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- INICIALIZAÇÃO DA APLICAÇÃO ---
     const initialPage = window.location.hash.substring(1) || 'dashboard';
     showPage(initialPage);
+});
+
+// --- LÓGICA DE FILTRAGEM DE MOVIMENTAÇÕES ---
+const searchInput = document.getElementById('search-movimentacoes');
+
+searchInput.addEventListener('input', (e) => {
+    console.log("A filtrar por:", e.target.value);
+    const searchTerm = e.target.value.toLowerCase();
+    
+    if (!searchTerm) {
+        // Se a pesquisa estiver vazia, mostra todos os dados novamente
+        createTable(movimentacoesContainer, allMovimentacoes, 'movimentacoes', 1381900325);
+        return;
+    }
+
+    const filteredMovimentacoes = allMovimentacoes.filter(mov => {
+        // Procura o termo em todos os valores do objeto
+        return Object.values(mov).some(value => 
+            String(value).toLowerCase().includes(searchTerm)
+        );
+    });
+
+    // Cria a tabela apenas com os dados filtrados
+    createTable(movimentacoesContainer, filteredMovimentacoes, 'movimentacoes', 1381900325);
 });
