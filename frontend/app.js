@@ -388,6 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
 const searchInput = document.getElementById('search-movimentacoes');
 
 searchInput.addEventListener('input', (e) => {
+    console.log("A filtrar por:", e.target.value);
     const searchTerm = e.target.value.toLowerCase();
     
     if (!searchTerm) {
