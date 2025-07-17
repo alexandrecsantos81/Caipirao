@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
-const API_BASE_URL = 'https://api-caipirao-maurizzio.onrender.com';
+    
+    // ATENÇÃO: Substitua pelo seu URL real do Render
+    const API_BASE_URL = 'https://api-caipirao.onrender.com';
 
     // --- LÓGICA DE NAVEGAÇÃO ---
     const navLinks = document.querySelectorAll('.nav-link');
@@ -9,7 +11,6 @@ const API_BASE_URL = 'https://api-caipirao-maurizzio.onrender.com';
     function showPage(pageId) {
         pageContents.forEach(page => page.classList.remove('active'));
         navLinks.forEach(link => link.classList.remove('active'));
-
         const targetPage = document.getElementById(`page-${pageId}`);
         const targetLink = document.querySelector(`a[href="#${pageId}"]`);
         
@@ -17,18 +18,13 @@ const API_BASE_URL = 'https://api-caipirao-maurizzio.onrender.com';
             targetPage.classList.add('active');
             pageTitle.textContent = targetLink.textContent.trim().replace(/^[^\w]+/, '');
         }
-        if (targetLink) {
-            targetLink.classList.add('active');
-        }
-
-        // Carrega os dados específicos da página quando ela é exibida
-        if (pageId === 'movimentacoes' || pageId === 'dashboard') {
-            fetchMovimentacoes();
-        } else if (pageId === 'clientes') {
-            fetchClientes();
-        } else if (pageId === 'produtos') {
-            fetchProdutos();
-        }
+        if (targetLink) targetLink.classList.add('active');
+        
+        // Carrega os dados da página selecionada
+        if (pageId === 'dashboard') fetchMovimentacoes();
+        else if (pageId === 'movimentacoes') fetchMovimentacoes();
+        else if (pageId === 'clientes') fetchClientes();
+        else if (pageId === 'produtos') fetchProdutos();
     }
 
     navLinks.forEach(link => {
@@ -39,79 +35,92 @@ const API_BASE_URL = 'https://api-caipirao-maurizzio.onrender.com';
         });
     });
 
+    // --- FUNÇÃO GENÉRICA DE DELETE ---
+    async function deleteRow(entity, rowIndex, sheetId) {
+        if (!confirm(`Tem a certeza de que quer apagar esta linha?`)) return;
+        try {
+            // O índice da API do Sheets é baseado em 0, e a primeira linha de dados é a linha 2 da planilha (índice 1)
+            const apiRowIndex = rowIndex + 1;
+            const response = await fetch(`${API_BASE_URL}/api/${entity}/${apiRowIndex}`, { 
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sheetId: sheetId }) // Enviando o sheetId para o backend
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || `Erro ao apagar! Status: ${response.status}`);
+            }
+            alert(`${entity.slice(0, -1)} apagado com sucesso!`);
+            showPage(entity); // Recarrega os dados da página atual
+        } catch (error) {
+            console.error(`Erro ao apagar ${entity}:`, error);
+            alert(`Falha ao apagar: ${error.message}`);
+        }
+    }
+
     // --- LÓGICA DA PÁGINA DE PRODUTOS ---
     const produtosContainer = document.getElementById('produtos-container');
     const produtoForm = document.getElementById('add-produto-form');
-
     async function fetchProdutos() {
         try {
             const response = await fetch(`${API_BASE_URL}/api/produtos`);
             if (!response.ok) throw new Error(`Erro HTTP! Status: ${response.status}`);
             const data = await response.json();
-            createTable(produtosContainer, data);
+            const formattedData = formatData(data);
+            // ATUALIZADO: Usando o seu ID de Produtos
+            createTable(produtosContainer, formattedData, 'produtos', 18808149);
         } catch (error) {
             console.error('Erro ao buscar produtos:', error);
             produtosContainer.innerHTML = '<p class="text-red-500">Falha ao carregar os dados dos produtos.</p>';
         }
     }
-
     produtoForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const formData = new FormData(produtoForm);
         const data = Object.fromEntries(formData.entries());
         try {
-            const response = await fetch(`${API_BASE_URL}/api/produtos`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
+            const response = await fetch(`${API_BASE_URL}/api/produtos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!response.ok) throw new Error(`Erro ao enviar dados! Status: ${response.status}`);
             alert('Produto adicionado com sucesso!');
             produtoForm.reset();
-            fetchProdutos(); // Atualiza a tabela
+            fetchProdutos();
         } catch (error) {
             console.error('Erro ao adicionar produto:', error);
             alert('Falha ao adicionar produto.');
         }
     });
 
-
     // --- LÓGICA DA PÁGINA DE CLIENTES ---
     const clientesContainer = document.getElementById('clientes-container');
     const clienteForm = document.getElementById('add-cliente-form');
-
     async function fetchClientes() {
         try {
             const response = await fetch(`${API_BASE_URL}/api/clientes`);
             if (!response.ok) throw new Error(`Erro HTTP! Status: ${response.status}`);
             const data = await response.json();
-            createTable(clientesContainer, data);
+            const formattedData = formatData(data);
+            // ATUALIZADO: Usando o seu ID de Clientes
+            createTable(clientesContainer, formattedData, 'clientes', 1386962696);
         } catch (error) {
             console.error('Erro ao buscar clientes:', error);
             clientesContainer.innerHTML = '<p class="text-red-500">Falha ao carregar os dados dos clientes.</p>';
         }
     }
-
     clienteForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const formData = new FormData(clienteForm);
         const data = Object.fromEntries(formData.entries());
         try {
-            const response = await fetch(`${API_BASE_URL}/api/clientes`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
+            const response = await fetch(`${API_BASE_URL}/api/clientes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!response.ok) throw new Error(`Erro ao enviar dados! Status: ${response.status}`);
             alert('Cliente adicionado com sucesso!');
             clienteForm.reset();
-            fetchClientes(); // Atualiza a tabela
+            fetchClientes();
         } catch (error) {
             console.error('Erro ao adicionar cliente:', error);
             alert('Falha ao adicionar cliente.');
         }
     });
-
 
     // --- LÓGICA DO DASHBOARD E MOVIMENTAÇÕES ---
     const movimentacoesContainer = document.getElementById('movimentacoes-container');
@@ -131,22 +140,18 @@ const API_BASE_URL = 'https://api-caipirao-maurizzio.onrender.com';
             const response = await fetch(`${API_BASE_URL}/api/movimentacoes`);
             if (!response.ok) throw new Error(`Erro HTTP! Status: ${response.status}`);
             const data = await response.json();
-            
             const formattedData = formatData(data);
-            if (movimentacoesContainer) {
-                createTable(movimentacoesContainer, data);
-            }
-                
-            if (totalEntradasEl && totalSaidasEl && saldoAtualEl && categoryChartCanvas) {
+            if(document.getElementById('page-dashboard').classList.contains('active')) {
                 updateDashboard(formattedData);
             }
-
+            // ATUALIZADO: Usando o seu ID de Movimentações
+            createTable(movimentacoesContainer, formattedData, 'movimentacoes', 1381900325);
         } catch (error) {
             console.error('Erro ao buscar dados da API:', error);
             movimentacoesContainer.innerHTML = '<p class="text-red-500">Falha ao carregar os dados. Verifique se o servidor backend está a correr.</p>';
         }
     }
-
+    
     function formatData(rawData) {
         if (!rawData || rawData.length < 2) return [];
         const headers = rawData[0];
@@ -163,19 +168,23 @@ const API_BASE_URL = 'https://api-caipirao-maurizzio.onrender.com';
     function updateDashboard(data) {
         let totalEntradas = 0, totalSaidas = 0;
         const categoryTotals = {};
-        data.forEach(mov => {
-            const valorString = mov.Valor || '0';
-            const valor = parseFloat(valorString.replace('R$', '').replace(/\./g, '').replace(',', '.').trim()) || 0;
-            const tipo = mov['Tipo (Entrada/Saída)'];
-            const categoria = mov.Categoria;
-            if (tipo === 'Entrada') {
-                totalEntradas += valor;
-                if (categoria) categoryTotals[categoria] = (categoryTotals[categoria] || 0) + valor;
-            } else if (tipo === 'Saída') {
-                totalSaidas += valor;
-                if (categoria) categoryTotals[categoria] = (categoryTotals[categoria] || 0) + valor;
-            }
-        });
+        if (Array.isArray(data)) {
+            data.forEach(mov => {
+                if (mov && typeof mov === 'object') {
+                    const valorString = mov.Valor || '0';
+                    const valor = parseFloat(valorString.replace('R$', '').replace(/\./g, '').replace(',', '.').trim()) || 0;
+                    const tipo = mov['Tipo (Entrada/Saída)'];
+                    const categoria = mov.Categoria;
+                    if (tipo === 'Entrada') {
+                        totalEntradas += valor;
+                        if (categoria) categoryTotals[categoria] = (categoryTotals[categoria] || 0) + valor;
+                    } else if (tipo === 'Saída') {
+                        totalSaidas += valor;
+                        if (categoria) categoryTotals[categoria] = (categoryTotals[categoria] || 0) + valor;
+                    }
+                }
+            });
+        }
         const saldoAtual = totalEntradas - totalSaidas;
         totalEntradasEl.textContent = formatCurrency(totalEntradas);
         totalSaidasEl.textContent = formatCurrency(totalSaidas);
@@ -208,10 +217,9 @@ const API_BASE_URL = 'https://api-caipirao-maurizzio.onrender.com';
         }
     }
     
-    // FUNÇÃO GENÉRICA PARA CRIAR TABELAS
-    function createTable(container, data) {
+    function createTable(container, data, entityName, sheetId) {
         container.innerHTML = '';
-        if (!data || data.length <= 1) {
+        if (!data || data.length === 0) {
             container.innerHTML = '<p>Nenhum dado encontrado.</p>';
             return;
         }
@@ -220,26 +228,37 @@ const API_BASE_URL = 'https://api-caipirao-maurizzio.onrender.com';
         const thead = document.createElement('thead');
         thead.className = 'bg-slate-100';
         const headerRow = document.createElement('tr');
-        const headers = data[0];
+        const headers = Object.keys(data[0] || {});
         headers.forEach(headerText => {
             const th = document.createElement('th');
             th.className = 'p-3 font-semibold';
             th.textContent = headerText;
             headerRow.appendChild(th);
         });
+        const thAcoes = document.createElement('th');
+        thAcoes.className = 'p-3 font-semibold text-right';
+        thAcoes.textContent = 'Ações';
+        headerRow.appendChild(thAcoes);
         thead.appendChild(headerRow);
         table.appendChild(thead);
         const tbody = document.createElement('tbody');
-        const rows = data.slice(1);
-        rows.forEach(rowData => {
+        data.forEach((rowData, index) => {
             const row = document.createElement('tr');
             row.className = 'border-b border-slate-200 hover:bg-slate-50';
-            rowData.forEach(cellData => {
+            headers.forEach(header => {
                 const td = document.createElement('td');
                 td.className = 'p-3';
-                td.textContent = cellData;
+                td.textContent = rowData[header];
                 row.appendChild(td);
             });
+            const tdBotao = document.createElement('td');
+            tdBotao.className = 'p-3 text-right';
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Apagar';
+            deleteButton.className = 'bg-red-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-red-600';
+            deleteButton.addEventListener('click', () => deleteRow(entityName, index, sheetId));
+            tdBotao.appendChild(deleteButton);
+            row.appendChild(tdBotao);
             tbody.appendChild(row);
         });
         table.appendChild(tbody);
@@ -251,11 +270,7 @@ const API_BASE_URL = 'https://api-caipirao-maurizzio.onrender.com';
         const formData = new FormData(movimentacaoForm);
         const data = Object.fromEntries(formData.entries());
         try {
-            const response = await fetch(`${API_BASE_URL}/api/movimentacoes`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
+            const response = await fetch(`${API_BASE_URL}/api/movimentacoes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             if (!response.ok) throw new Error(`Erro ao enviar dados! Status: ${response.status}`);
             alert('Movimentação adicionada com sucesso!');
             movimentacaoForm.reset();
@@ -266,6 +281,5 @@ const API_BASE_URL = 'https://api-caipirao-maurizzio.onrender.com';
         }
     });
 
-    // Mostrar a página inicial
     showPage('dashboard');
 });

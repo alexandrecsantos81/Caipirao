@@ -121,6 +121,53 @@ app.post('/api/:sheetName', async (req, res) => {
     }
 });
 
+// Rota para apagar uma linha de uma aba específica (VERSÃO CORRIGIDA)
+app.delete('/api/:sheetName/:rowIndex', async (req, res) => {
+    const { sheetName, rowIndex } = req.params;
+    const { sheetId } = req.body; // Recebemos o ID da aba do frontend
+
+    // Validação de segurança
+    const allowedSheets = ['movimentacoes', 'clientes', 'produtos'];
+    if (!allowedSheets.includes(sheetName.toLowerCase())) {
+        return res.status(400).send('Nome da planilha inválido.');
+    }
+
+    if (sheetId === undefined) {
+        return res.status(400).send('O ID da aba (sheetId) é necessário.');
+    }
+
+    try {
+        const sheets = google.sheets({ version: 'v4', auth });
+        
+        // CORREÇÃO: O índice da API é baseado em 0, mas a primeira linha de dados
+        // na planilha é a linha 2. Portanto, o índice real é o rowIndex + 1.
+        const apiRowIndex = parseInt(rowIndex, 10) + 1;
+
+        await sheets.spreadsheets.batchUpdate({
+            spreadsheetId: SPREADSHEET_ID,
+            resource: {
+                requests: [
+                    {
+                        deleteDimension: {
+                            range: {
+                                sheetId: parseInt(sheetId, 10),
+                                dimension: 'ROWS',
+                                startIndex: apiRowIndex, // <-- CORREÇÃO APLICADA
+                                endIndex: apiRowIndex + 1  // <-- CORREÇÃO APLICADA
+                            }
+                        }
+                    }
+                ]
+            }
+        });
+
+        res.status(200).send(`Linha apagada com sucesso da aba ${sheetName}!`);
+
+    } catch (error) {
+        console.error(`Erro ao apagar linha da aba ${sheetName}:`, error.message);
+        res.status(500).send(`Erro no servidor ao apagar a linha.`);
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`Servidor de produção a correr na porta ${PORT}`);
