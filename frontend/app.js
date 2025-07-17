@@ -3,6 +3,46 @@ document.addEventListener('DOMContentLoaded', () => {
     // ATENÇÃO: Substitua pelo seu URL real do Render
     const API_BASE_URL = 'https://api-caipirao-maurizzio-procopio.onrender.com';
 
+    // --- LÓGICA DO MODAL DE EDIÇÃO ---
+
+    const modalBackdrop = document.getElementById('edit-modal-backdrop');
+    const modal = document.getElementById('edit-modal');
+    const editForm = document.getElementById('edit-form');
+    const editFormFields = document.getElementById('edit-form-fields');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const cancelEditBtn = document.getElementById('cancel-edit-btn');
+
+    let currentEditInfo = {}; // Para guardar a informação do registo a ser editado
+
+    // Função para ABRIR o modal e preencher o formulário
+    function openEditModal(entity, rowIndex, data) {
+        currentEditInfo = { entity, rowIndex }; // Guarda a entidade e o índice
+        editFormFields.innerHTML = ''; // Limpa campos antigos
+
+        // Cria dinamicamente os campos de input baseados nos dados
+        for (const key in data) {
+            // Não cria campo para o ID da planilha ou outros campos internos
+            if (key.toLowerCase() === 'sheetid') continue;
+
+            const fieldWrapper = document.createElement('div');
+            
+            const label = document.createElement('label');
+            label.for = `edit-${key}`;
+            label.className = 'block text-sm font-medium text-slate-700';
+            label.textContent = key;
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = `edit-${key}`;
+            input.name = key;
+            input.value = data[key];
+            input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm';
+
+            fieldWrapper.appendChild(label);
+            fieldWrapper.appendChild(input);
+            editFormFields.appendChild(fieldWrapper);
+        }
+
     // --- LÓGICA DE NAVEGAÇÃO ---
     const navLinks = document.querySelectorAll('.nav-link');
     const pageContents = document.querySelectorAll('.page-content');
@@ -316,45 +356,7 @@ async function deleteRow(entity, rowIndex, sheetId) {
     showPage('dashboard');
 });
 
-// --- LÓGICA DO MODAL DE EDIÇÃO ---
 
-const modalBackdrop = document.getElementById('edit-modal-backdrop');
-const modal = document.getElementById('edit-modal');
-const editForm = document.getElementById('edit-form');
-const editFormFields = document.getElementById('edit-form-fields');
-const closeModalBtn = document.getElementById('close-modal-btn');
-const cancelEditBtn = document.getElementById('cancel-edit-btn');
-
-let currentEditInfo = {}; // Para guardar a informação do registo a ser editado
-
-// Função para ABRIR o modal e preencher o formulário
-function openEditModal(entity, rowIndex, data) {
-    currentEditInfo = { entity, rowIndex }; // Guarda a entidade e o índice
-    editFormFields.innerHTML = ''; // Limpa campos antigos
-
-    // Cria dinamicamente os campos de input baseados nos dados
-    for (const key in data) {
-        // Não cria campo para o ID da planilha ou outros campos internos
-        if (key.toLowerCase() === 'sheetid') continue;
-
-        const fieldWrapper = document.createElement('div');
-        
-        const label = document.createElement('label');
-        label.for = `edit-${key}`;
-        label.className = 'block text-sm font-medium text-slate-700';
-        label.textContent = key;
-        
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.id = `edit-${key}`;
-        input.name = key;
-        input.value = data[key];
-        input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm';
-
-        fieldWrapper.appendChild(label);
-        fieldWrapper.appendChild(input);
-        editFormFields.appendChild(fieldWrapper);
-    }
 
     // Mostra o modal com uma animação
     modalBackdrop.classList.remove('hidden');
