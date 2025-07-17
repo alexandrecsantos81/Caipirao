@@ -182,17 +182,17 @@ app.put('/api/:sheetName/:rowIndex', async (req, res) => {
     const updatedData = req.body;
     const { sheetId } = updatedData;
 
-    // Validação de segurança
-    const allowedSheets = ['movimentacoes', 'clientes', 'produtos'];
-    if (!allowedSheets.includes(sheetName.toLowerCase())) {
+    // Validação e tradução robusta
+    const allowedSheets = {
+        movimentacoes: '_Movimentacoes',
+        clientes: 'Clientes',
+        produtos: 'Produtos'
+    };
+    const lowerCaseSheetName = sheetName.toLowerCase();
+    if (!allowedSheets[lowerCaseSheetName]) {
         return res.status(400).send('Nome da planilha inválido.');
     }
-
-    // Tradução dos nomes para corresponder EXATAMENTE aos nomes das abas
-    let actualSheetName = '';
-    if (sheetName === 'movimentacoes') actualSheetName = '_Movimentacoes';
-    else if (sheetName === 'clientes') actualSheetName = 'Clientes';
-    else if (sheetName === 'produtos') actualSheetName = 'Produtos';
+    const actualSheetName = allowedSheets[lowerCaseSheetName];
 
     if (sheetId === undefined) {
         return res.status(400).send('O ID da aba (sheetId) é necessário para a edição.');
@@ -203,33 +203,19 @@ app.put('/api/:sheetName/:rowIndex', async (req, res) => {
 
         const headerResponse = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: `${actualSheetName}!1:1`, // CORREÇÃO: Usar o nome traduzido
+            range: `${actualSheetName}!1:1`, // Usa o nome traduzido
         });
         const headers = headerResponse.data.values[0];
 
-        // Mapeia os dados atualizados, tratando o valor como moeda
         const updatedRowValues = headers.map(header => {
             const value = updatedData[header] || '';
-            // Se o cabeçalho for 'Preço' ou 'Valor', formata como moeda
             if ((header.toLowerCase() === 'preço' || header.toLowerCase() === 'valor') && !isNaN(parseFloat(value))) {
                 return {
-                    userEnteredValue: {
-                        numberValue: parseFloat(value)
-                    },
-                    userEnteredFormat: {
-                        numberFormat: {
-                            type: 'CURRENCY',
-                            pattern: '"R$"#,##0.00'
-                        }
-                    }
+                    userEnteredValue: { numberValue: parseFloat(value) },
+                    userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"R$"#,##0.00' } }
                 };
             }
-            // Para todos os outros campos, trata como texto
-            return {
-                userEnteredValue: {
-                    stringValue: value.toString()
-                }
-            };
+            return { userEnteredValue: { stringValue: value.toString() } };
         });
 
         const request = {
@@ -243,7 +229,7 @@ app.put('/api/:sheetName/:rowIndex', async (req, res) => {
                             columnIndex: 0
                         },
                         rows: [{ values: updatedRowValues }],
-                        fields: 'userEnteredValue,userEnteredFormat' // Aplica tanto o valor quanto o formato
+                        fields: 'userEnteredValue,userEnteredFormat'
                     }
                 }]
             }
@@ -257,6 +243,7 @@ app.put('/api/:sheetName/:rowIndex', async (req, res) => {
         res.status(500).send(`Erro ao atualizar registo: ${error.message}`);
     }
 });
+
 
 
 app.listen(PORT, () => {
