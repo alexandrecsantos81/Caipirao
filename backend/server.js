@@ -180,13 +180,19 @@ app.delete('/api/:sheetName/:rowIndex', async (req, res) => {
 app.put('/api/:sheetName/:rowIndex', async (req, res) => {
     const { sheetName, rowIndex } = req.params;
     const updatedData = req.body;
-    const { sheetId } = updatedData; // Vamos precisar do sheetId também
+    const { sheetId } = updatedData;
 
     // Validação de segurança
     const allowedSheets = ['movimentacoes', 'clientes', 'produtos'];
     if (!allowedSheets.includes(sheetName.toLowerCase())) {
         return res.status(400).send('Nome da planilha inválido.');
     }
+
+    // Tradução dos nomes para corresponder EXATAMENTE aos nomes das abas
+    let actualSheetName = '';
+    if (sheetName === 'movimentacoes') actualSheetName = '_Movimentacoes';
+    else if (sheetName === 'clientes') actualSheetName = 'Clientes';
+    else if (sheetName === 'produtos') actualSheetName = 'Produtos';
 
     if (sheetId === undefined) {
         return res.status(400).send('O ID da aba (sheetId) é necessário para a edição.');
@@ -195,55 +201,62 @@ app.put('/api/:sheetName/:rowIndex', async (req, res) => {
     try {
         const sheets = google.sheets({ version: 'v4', auth });
 
-        // Busca os cabeçalhos para garantir a ordem correta dos dados
         const headerResponse = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: `${sheetName}!1:1`, // Usamos o nome da aba aqui
+            range: `${actualSheetName}!1:1`, // CORREÇÃO: Usar o nome traduzido
         });
         const headers = headerResponse.data.values[0];
 
-        // Mapeia os dados atualizados para a mesma ordem dos cabeçalhos
-        const updatedRowValues = headers.map(header => ({
-            userEnteredValue: {
-                stringValue: updatedData[header] || ''
+        // Mapeia os dados atualizados, tratando o valor como moeda
+        const updatedRowValues = headers.map(header => {
+            const value = updatedData[header] || '';
+            // Se o cabeçalho for 'Preço' ou 'Valor', formata como moeda
+            if ((header.toLowerCase() === 'preço' || header.toLowerCase() === 'valor') && !isNaN(parseFloat(value))) {
+                return {
+                    userEnteredValue: {
+                        numberValue: parseFloat(value)
+                    },
+                    userEnteredFormat: {
+                        numberFormat: {
+                            type: 'CURRENCY',
+                            pattern: '"R$"#,##0.00'
+                        }
+                    }
+                };
             }
-        }));
+            // Para todos os outros campos, trata como texto
+            return {
+                userEnteredValue: {
+                    stringValue: value.toString()
+                }
+            };
+        });
 
         const request = {
             spreadsheetId: SPREADSHEET_ID,
             resource: {
-                requests: [
-                    {
-                        updateCells: {
-                            start: {
-                                sheetId: parseInt(sheetId, 10),
-                                rowIndex: parseInt(rowIndex, 10) + 1, // +1 porque a primeira linha de dados é o índice 1 para a API
-                                columnIndex: 0 // Começa na primeira coluna (A)
-                            },
-                            rows: [
-                                {
-                                    values: updatedRowValues
-                                }
-                            ],
-                            fields: 'userEnteredValue'
-                        }
+                requests: [{
+                    updateCells: {
+                        start: {
+                            sheetId: parseInt(sheetId, 10),
+                            rowIndex: parseInt(rowIndex, 10) + 1,
+                            columnIndex: 0
+                        },
+                        rows: [{ values: updatedRowValues }],
+                        fields: 'userEnteredValue,userEnteredFormat' // Aplica tanto o valor quanto o formato
                     }
-                ]
+                }]
             }
         };
 
         await sheets.spreadsheets.batchUpdate(request);
-
         res.status(200).send('Registo atualizado com sucesso!');
 
     } catch (error) {
-        console.error(`Erro ao atualizar registo na aba ${sheetName}:`, error.message, error.stack);
+        console.error(`Erro ao atualizar registo na aba ${actualSheetName}:`, error.message, error.stack);
         res.status(500).send(`Erro ao atualizar registo: ${error.message}`);
     }
 });
-
-
-
 
 
 app.listen(PORT, () => {

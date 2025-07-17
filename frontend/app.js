@@ -54,19 +54,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // Função genérica para buscar dados e criar tabelas
     async function fetchData(entity, container, sheetId) {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/${entity}`);
-            if (!response.ok) throw new Error(`Erro HTTP! Status: ${response.status}`);
-            const data = await response.json();
-            const formattedData = formatData(data);
-            
-            if (entity === 'movimentacoes' && document.getElementById('page-dashboard').classList.contains('active')) {
-                updateDashboard(formattedData);
+            const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedData)
+            });
+
+            const responseText = await response.text();
+            console.log("Resposta da API:", response.status, responseText);
+
+            if (!response.ok) {
+                // Se a resposta não for OK, mostra o erro do servidor e para.
+                alert(`Falha ao atualizar: ${responseText}`);
+                return; 
             }
             
-            createTable(container, formattedData, entity, sheetId);
+            // Se a resposta for OK, mostra o sucesso.
+            alert('Registo atualizado com sucesso!');
+            closeEditModal();
+            showPage(entity);
+
         } catch (error) {
-            console.error(`Erro ao buscar ${entity}:`, error);
-            container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}.</p>`;
+            // Este catch agora só apanha erros de rede (ex: sem internet)
+            console.error(`Erro de rede ao atualizar ${entity}:`, error);
+            alert(`Erro de rede: ${error.message}`);
         }
     }
 
