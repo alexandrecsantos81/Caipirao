@@ -1,1 +1,3 @@
-data/credenciais.json
+# Ignorar ficheiros de credenciais e de ambiente
+backend/data/credenciais.json
+.env
