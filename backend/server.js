@@ -30,8 +30,8 @@ console.log('--- DIAGNÓSTICO: SPREADSHEET_ID a ser usado:', SPREADSHEET_ID, '--
 
 // Lógica para usar as credenciais do Render (via variável de ambiente)
 // A opção de carregar o ficheiro local é mantida para facilitar testes futuros.
-const creds = process.env.GOOGLE_CREDENTIALS ?
-    JSON.parse(process.env.GOOGLE_CREDENTIALS) :
+const creds = process.env.GOOGLE_CREDS_V2 ? // <-- MUDANÇA AQUI
+    JSON.parse(process.env.GOOGLE_CREDS_V2) : // <-- MUDANÇA AQUI
     require(path.join(__dirname, 'data/credenciais.json'));
 
 const auth = new google.auth.GoogleAuth({
