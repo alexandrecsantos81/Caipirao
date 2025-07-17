@@ -377,7 +377,7 @@ function closeEditModal() {
 closeModalBtn.addEventListener('click', closeEditModal);
 cancelEditBtn.addEventListener('click', closeEditModal);
 
-// Event listener para o formulário de edição
+// Event listener para o formulário de edição (VERSÃO DE DEPURAÇÃO)
 editForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     
@@ -386,26 +386,41 @@ editForm.addEventListener('submit', async (event) => {
     
     const { entity, rowIndex } = currentEditInfo;
 
+    // --- LOGS DE DIAGNÓSTICO ---
+    console.log("--- INICIANDO PROCESSO DE EDITAR ---");
+    console.log("Entidade:", entity);
+    console.log("Índice da Linha (do frontend):", rowIndex);
+    
+    const apiUrl = `${API_BASE_URL}/api/${entity}/${rowIndex}`;
+    console.log("URL da API a ser chamada:", apiUrl);
+
+    const requestBody = updatedData;
+    console.log("Corpo do Pedido (Body) a ser enviado:", JSON.stringify(requestBody));
+    // -----------------------------
+
     try {
-        const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, {
+        const response = await fetch(apiUrl, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedData)
+            body: JSON.stringify(requestBody)
         });
 
+        // --- LOGS DA RESPOSTA ---
+        console.log("Resposta recebida da API. Status:", response.status);
+        const responseText = await response.text(); // Lê a resposta como texto
+        console.log("Texto da Resposta:", responseText);
+        // ------------------------
+
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(errorText || `Erro ao atualizar! Status: ${response.status}`);
+            throw new Error(responseText || `Erro ao atualizar! Status: ${response.status}`);
         }
 
-        alert('Registo atualizado com sucesso!');
+        alert(`Registo atualizado com sucesso! (Resposta do servidor: ${responseText})`);
         closeEditModal();
-        
-        // Recarrega os dados da página atual para mostrar a alteração
         showPage(entity); 
 
     } catch (error) {
-        console.error(`Erro ao atualizar ${entity}:`, error);
-        alert(`Falha ao atualizar: ${error.message}`);
+        console.error(`ERRO CRÍTICO AO ATUALIZAR ${entity}:`, error);
+        alert(`FALHA AO ATUALIZAR: ${error.message}`);
     }
 });
