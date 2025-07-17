@@ -176,6 +176,65 @@ app.delete('/api/:sheetName/:rowIndex', async (req, res) => {
     }
 });
 
+// Rota para ATUALIZAR (EDITAR) uma linha existente
+app.put('/api/:sheetName/:rowIndex', async (req, res) => {
+    let { sheetName, rowIndex } = req.params;
+    const updatedData = req.body;
+
+    // Validação de segurança
+    const allowedSheets = ['movimentacoes', 'clientes', 'produtos'];
+    if (!allowedSheets.includes(sheetName.toLowerCase())) {
+        return res.status(400).send('Nome da planilha inválido.');
+    }
+
+    // Tradução dos nomes para corresponder EXATAMENTE aos nomes das abas
+    let actualSheetName = '';
+    if (sheetName === 'movimentacoes') actualSheetName = '_Movimentacoes';
+    else if (sheetName === 'clientes') actualSheetName = 'Clientes';
+    else if (sheetName === 'produtos') actualSheetName = 'Produtos';
+
+    try {
+        const sheets = google.sheets({ version: 'v4', auth });
+
+        // Busca os cabeçalhos para garantir a ordem correta dos dados
+        const headerResponse = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${actualSheetName}!1:1`,
+        });
+        const headers = headerResponse.data.values[0];
+
+        // Mapeia os dados atualizados para a mesma ordem dos cabeçalhos
+        const updatedRow = headers.map(header => updatedData[header] || '');
+
+        // Calcula o número da linha na planilha.
+        // O índice do frontend (rowIndex) começa em 0.
+        // A primeira linha de dados está na linha 2 da planilha.
+        // Portanto, a linha a ser atualizada é rowIndex + 2.
+        const sheetRowNumber = parseInt(rowIndex, 10) + 2;
+
+        // Constrói o range para a atualização, ex: 'Produtos!A3'
+        // Assumimos que os dados começam na coluna A.
+        const range = `${actualSheetName}!A${sheetRowNumber}`;
+
+        await sheets.spreadsheets.values.update({
+            spreadsheetId: SPREADSHEET_ID,
+            range: range,
+            valueInputOption: 'USER_ENTERED',
+            resource: {
+                values: [updatedRow],
+            },
+        });
+
+        res.status(200).send('Registo atualizado com sucesso!');
+
+    } catch (error) {
+        console.error(`Erro ao atualizar registo na aba ${sheetName}:`, error.message);
+        res.status(500).send(`Erro ao atualizar registo: ${error.message}`);
+    }
+});
+
+
+
 app.listen(PORT, () => {
     console.log(`Servidor de produção a correr na porta ${PORT}`);
 });
