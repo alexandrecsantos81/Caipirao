@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const { google } = require('googleapis');
 const path = require('path');
-
+const bcrypt = require('bcrypt');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -250,3 +250,41 @@ app.listen(PORT, () => {
     console.log(`Servidor de produção a correr na porta ${PORT}`);
 });
 // Forçando a atualização para diagnóstico - [Data de hoje]
+
+// --- ROTAS DE AUTENTICAÇÃO ---
+
+// Rota para registar um novo utilizador
+app.post('/auth/register', async (req, res) => {
+    const { email, senha } = req.body;
+
+    if (!email || !senha) {
+        return res.status(400).send('Email e senha são obrigatórios.');
+    }
+
+    try {
+        const sheets = google.sheets({ version: 'v4', auth });
+
+        // 1. "Hashear" a senha de forma segura
+        const saltRounds = 10; // Fator de custo para a segurança do hash
+        const senhaHash = await bcrypt.hash(senha, saltRounds);
+
+        // 2. Preparar a nova linha para a planilha
+        const newRow = [email, senhaHash];
+
+        // 3. Adicionar o novo utilizador à aba "Utilizadores"
+        await sheets.spreadsheets.values.append({
+            spreadsheetId: SPREADSHEET_ID,
+            range: 'Utilizadores', // Nome exato da aba
+            valueInputOption: 'USER_ENTERED',
+            resource: {
+                values: [newRow],
+            },
+        });
+
+        res.status(201).send('Utilizador registado com sucesso!');
+
+    } catch (error) {
+        console.error('Erro ao registar utilizador:', error.message);
+        res.status(500).send('Erro no servidor ao registar o utilizador.');
+    }
+});
