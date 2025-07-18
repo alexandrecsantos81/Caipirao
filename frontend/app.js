@@ -1,8 +1,60 @@
 document.addEventListener('DOMContentLoaded', () => {
+
+    // --- VERIFICAÇÃO INICIAL DE TOKEN (REDUNDANTE, MAS BOA PRÁTICA) ---
+    const token = localStorage.getItem('jwtToken');
+    if (!token) {
+        window.location.href = 'login.html';
+        return; // Para a execução do script se não houver token
+    }
     
     // URL da API do Backend
     const API_BASE_URL = 'https://api-caipirao-maurizzio-procopio.onrender.com';
 
+    // --- FUNÇÃO AUXILIAR PARA CABEÇALHOS DE AUTENTICAÇÃO ---
+    function getAuthHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        };
+    }
+
+    // --- LÓGICA DE NAVEGAÇÃO (igual a antes) ---
+    const navLinks = document.querySelectorAll('.nav-link');
+    const pageContents = document.querySelectorAll('.page-content');
+    const pageTitle = document.getElementById('page-title');
+
+    function showPage(pageId) {
+        pageContents.forEach(page => page.classList.remove('active'));
+        navLinks.forEach(link => link.classList.remove('active'));
+        const targetPage = document.getElementById(`page-${pageId}`);
+        const targetLink = document.querySelector(`a[href="#${pageId}"]`);
+        if (targetPage) {
+            targetPage.classList.add('active');
+            pageTitle.textContent = targetLink.textContent.trim().replace(/^[^\w]+/, '');
+        }
+        if (targetLink) targetLink.classList.add('active');
+        if (pageId === 'dashboard' || pageId === 'movimentacoes') fetchMovimentacoes();
+        else if (pageId === 'clientes') fetchClientes();
+        else if (pageId === 'produtos') fetchProdutos();
+    }
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const pageId = link.getAttribute('href').substring(1);
+            window.location.hash = pageId;
+            showPage(pageId);
+        });
+    });
+
+    // --- LÓGICA DE LOGOUT ---
+    const logoutBtn = document.getElementById('logout-btn');
+    logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('jwtToken');
+        alert('Sessão terminada com sucesso!');
+        window.location.href = 'login.html';
+    });
+    
     // --- ELEMENTOS GLOBAIS DA PÁGINA ---
     const navLinks = document.querySelectorAll('.nav-link' );
     const pageContents = document.querySelectorAll('.page-content');
@@ -115,22 +167,24 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchData(entity, container, sheetId) {
         showLoader();
         try {
-            const response = await fetch(`${API_BASE_URL}/api/${entity}`);
-            if (!response.ok) {
-                throw new Error(`Erro HTTP! Status: ${response.status}`);
+            const response = await fetch(`${API_BASE_URL}/api/${entity}`, {
+                headers: getAuthHeaders() // <<<<<<< ALTERAÇÃO AQUI
+            });
+            if (response.status === 401 || response.status === 403) {
+                localStorage.removeItem('jwtToken');
+                window.location.href = 'login.html';
+                return;
             }
+            if (!response.ok) throw new Error(`Erro HTTP! Status: ${response.status}`);
             const data = await response.json();
             const formattedData = formatData(data);
-            
             if (entity === 'movimentacoes') {
                 allMovimentacoes = formattedData;
                 if (document.getElementById('page-dashboard').classList.contains('active')) {
                     updateDashboard(formattedData);
                 }
             }
-            
             createTable(container, formattedData, entity, sheetId);
-
         } catch (error) {
             console.error(`Erro ao buscar ${entity}:`, error);
             container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}.</p>`;
@@ -139,6 +193,79 @@ document.addEventListener('DOMContentLoaded', () => {
             hideLoader();
         }
     }
+
+    async function deleteRow(entity, rowIndex, sheetId) {
+        if (!confirm('Tem a certeza de que quer apagar esta linha?')) return;
+        showLoader();
+        try {
+            const apiRowIndex = rowIndex + 1;
+            const response = await fetch(`${API_BASE_URL}/api/${entity}/${apiRowIndex}`, { 
+                method: 'DELETE',
+                headers: getAuthHeaders(), // <<<<<<< ALTERAÇÃO AQUI
+                body: JSON.stringify({ sheetId })
+            });
+            if (!response.ok) throw new Error(await response.text());
+            showNotification('Registo apagado com sucesso!', 'success');
+            showPage(entity);
+        } catch (error) {
+            console.error(`Erro ao apagar ${entity}:`, error);
+            showNotification(`Falha ao apagar: ${error.message}`, 'error');
+        } finally {
+            hideLoader();
+        }
+    }
+
+    async function handleAddFormSubmit(event, entity, form, fetchFunction) {
+        event.preventDefault();
+        showLoader();
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/${entity}`, {
+                method: 'POST',
+                headers: getAuthHeaders(), // <<<<<<< ALTERAÇÃO AQUI
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) throw new Error(await response.text());
+            showNotification(`${entity.slice(0, -1)} adicionado com sucesso!`, 'success');
+            form.reset();
+            fetchFunction();
+        } catch (error) {
+            console.error(`Erro ao adicionar ${entity}:`, error);
+            showNotification(`Falha ao adicionar: ${error.message}`, 'error');
+        } finally {
+            hideLoader();
+        }
+    }
+
+    editForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        showLoader();
+        const formData = new FormData(editForm);
+        const updatedData = Object.fromEntries(formData.entries());
+        const { entity, rowIndex, sheetId } = currentEditInfo;
+        updatedData.sheetId = sheetId; 
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, {
+                method: 'PUT',
+                headers: getAuthHeaders(), // <<<<<<< ALTERAÇÃO AQUI
+                body: JSON.stringify(updatedData)
+            });
+            const responseText = await response.text();
+            if (!response.ok) {
+                showNotification(`Falha ao atualizar: ${responseText}`, 'error');
+                return; 
+            }
+            showNotification('Registo atualizado com sucesso!', 'success');
+            closeEditModal();
+            showPage(entity);
+        } catch (error) {
+            console.error(`Erro de rede ao atualizar ${entity}:`, error);
+            showNotification(`Erro de rede: ${error.message}`, 'error');
+        } finally {
+            hideLoader();
+        }
+    });
 
     const produtosContainer = document.getElementById('produtos-container');
     function fetchProdutos() { fetchData('produtos', produtosContainer, 18808149); }
