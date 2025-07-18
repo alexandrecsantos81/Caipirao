@@ -112,25 +112,90 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- FUNÇÕES CRUD (Create, Read, Update, Delete) ---
 
-    // Variável para armazenar a instância do gráfico
-    let categoryChartInstance = null;
+    // Objeto para armazenar instâncias de gráficos
+    const chartInstances = {};
+    let isFetching = false;
 
-    function updateDashboard(data) {
-        const canvas = document.getElementById('categoryChart');
-        if (!canvas) {
-            console.error('Canvas com ID "categoryChart" não encontrado');
+    async function fetchData(entity, container, sheetId) {
+        if (isFetching) {
+            console.log(`fetchData já em andamento para ${entity}, ignorando chamada`);
+            return;
+        }
+        isFetching = true;
+
+        if (!entity || !container || !sheetId || !(container instanceof HTMLElement)) {
+            console.error('Parâmetros inválidos', { entity, container, sheetId });
+            container.innerHTML = `<p class="text-red-500">Parâmetros inválidos</p>`;
+            showNotification('Parâmetros inválidos', 'error');
+            isFetching = false;
             return;
         }
 
-        // Destruir o gráfico existente, se houver
-        if (categoryChartInstance) {
-            categoryChartInstance.destroy();
-            categoryChartInstance = null;
+        console.log(`Iniciando fetchData para entidade: ${entity}`);
+        showLoader();
+        try {
+            console.log(`Fazendo requisição para: ${API_BASE_URL}/api/${entity}`);
+            const response = await fetch(`${API_BASE_URL}/api/${entity}`);
+            if (!response.ok) {
+                throw new Error(`Erro HTTP! Status: ${response.status}`);
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Resposta da API não é JSON');
+            }
+
+            const data = await response.json();
+            console.log('Dados recebidos:', data);
+            const formattedData = formatData(data);
+            console.log('Dados formatados:', formattedData);
+
+            if (entity === 'movimentacoes') {
+                allMovimentacoes = formattedData;
+                const dashboard = document.getElementById('page-dashboard');
+                if (dashboard && dashboard.classList.contains('active')) {
+                    console.log('Atualizando dashboard com dados:', formattedData);
+                    updateDashboard(formattedData);
+                } else {
+                    console.log('Dashboard não está ativo ou não encontrado');
+                }
+            }
+
+            createTable(container, formattedData, entity, sheetId);
+        } catch (error) {
+            console.error(`Erro ao buscar ${entity}:`, error);
+            container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}: ${error.message}</p>`;
+            showNotification(`Falha ao carregar dados de ${entity}: ${error.message}`, 'error');
+        } finally {
+            hideLoader();
+            isFetching = false;
+            console.log('fetchData concluído');
+        }
+    }
+
+    function updateDashboard(data) {
+        const canvasId = 'categoryChart';
+        const canvas = document.getElementById(canvasId);
+        
+        if (!canvas) {
+            console.error(`Canvas com ID "${canvasId}" não encontrado`);
+            return;
+        }
+
+        // Destruir gráfico existente, se houver
+        if (chartInstances[canvasId]) {
+            try {
+                chartInstances[canvasId].destroy();
+                console.log(`Gráfico anterior com ID "${canvasId}" destruído`);
+            } catch (err) {
+                console.error(`Erro ao destruir gráfico anterior:`, err);
+            }
+            chartInstances[canvasId] = null;
         }
 
         // Criar novo gráfico
         try {
-            categoryChartInstance = new Chart(canvas, {
+            chartInstances[canvasId] = new Chart(canvas, {
                 type: 'bar',
                 data: {
                     labels: data.map(item => item.category || 'Desconhecido'),
@@ -149,52 +214,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             });
+            console.log(`Novo gráfico criado para "${canvasId}"`);
         } catch (error) {
             console.error('Erro ao criar o gráfico:', error);
-            throw error; // Propaga o erro para fetchData
+            throw error;
         }
     }
 
-    async function fetchData(entity, container, sheetId) {
-        if (!entity || !container || !sheetId || !(container instanceof HTMLElement)) {
-            console.error('Parâmetros inválidos', { entity, container, sheetId });
-            container.innerHTML = `<p class="text-red-500">Parâmetros inválidos</p>`;
-            showNotification('Parâmetros inválidos', 'error');
-            return;
+    // Limpar gráficos no carregamento da página
+    window.addEventListener('load', () => {
+        const canvasId = 'categoryChart';
+        if (chartInstances[canvasId]) {
+            chartInstances[canvasId].destroy();
+            chartInstances[canvasId] = null;
         }
-
-        showLoader();
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/${entity}`);
-            if (!response.ok) {
-                throw new Error(`Erro HTTP! Status: ${response.status}`);
-            }
-
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Resposta da API não é JSON');
-            }
-
-            const data = await response.json();
-            const formattedData = formatData(data);
-
-            if (entity === 'movimentacoes') {
-                allMovimentacoes = formattedData;
-                const dashboard = document.getElementById('page-dashboard');
-                if (dashboard && dashboard.classList.contains('active')) {
-                    updateDashboard(formattedData);
-                }
-            }
-
-            createTable(container, formattedData, entity, sheetId);
-        } catch (error) {
-            console.error(`Erro ao buscar ${entity}:`, error);
-            container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}: ${error.message}</p>`;
-            showNotification(`Falha ao carregar dados de ${entity}: ${error.message}`, 'error');
-        } finally {
-            hideLoader();
-        }
-    }
+    });
 
     const produtosContainer = document.getElementById('produtos-container');
     function fetchProdutos() { fetchData('produtos', produtosContainer, 18808149); }
