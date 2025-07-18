@@ -135,6 +135,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- FUNÇÕES CRUD (Create, Read, Update, Delete) ---
+    
+    async function fetchData(entity, container, sheetId) {
+        showLoader();
+        const timeout = setTimeout(() => {
+            hideLoader();
+            showNotification('Tempo de carregamento excedido', 'error');
+        }, 10000); // 10 segundos
+    
     async function fetchData(entity, container, sheetId) {
         showLoader();
         try {
