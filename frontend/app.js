@@ -1,16 +1,19 @@
 document.addEventListener('DOMContentLoaded', () => {
-
-    // --- VERIFICAÇÃO INICIAL DE TOKEN (REDUNDANTE, MAS BOA PRÁTICA) ---
+    
+    // --- VERIFICAÇÃO INICIAL DE TOKEN ---
+    // Este script protege o acesso ao dashboard.
+    // Se não houver token, redireciona para a página de login.
     const token = localStorage.getItem('jwtToken');
     if (!token) {
         window.location.href = 'login.html';
         return; // Para a execução do script se não houver token
     }
-    
-    // URL da API do Backend
+
+    // URL da API do Backend em produção
     const API_BASE_URL = 'https://api-caipirao-maurizzio-procopio.onrender.com';
 
     // --- FUNÇÃO AUXILIAR PARA CABEÇALHOS DE AUTENTICAÇÃO ---
+    // Cria o cabeçalho 'Authorization' com o token para ser enviado em cada pedido
     function getAuthHeaders() {
         return {
             'Content-Type': 'application/json',
@@ -18,11 +21,44 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // --- LÓGICA DE NAVEGAÇÃO (igual a antes) ---
+    // --- ELEMENTOS GLOBAIS DA PÁGINA ---
     const navLinks = document.querySelectorAll('.nav-link');
     const pageContents = document.querySelectorAll('.page-content');
     const pageTitle = document.getElementById('page-title');
+    const logoutBtn = document.getElementById('logout-btn');
 
+    // --- ELEMENTOS DO MODAL DE EDIÇÃO ---
+    const modalBackdrop = document.getElementById('edit-modal-backdrop');
+    const modal = document.getElementById('edit-modal');
+    const editForm = document.getElementById('edit-form');
+    const editFormFields = document.getElementById('edit-form-fields');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const cancelEditBtn = document.getElementById('cancel-edit-btn');
+    let currentEditInfo = {};
+    let allMovimentacoes = [];
+
+    // --- LÓGICA DE NOTIFICAÇÃO (TOAST) ---
+    const notificationContainer = document.getElementById('notification-container');
+
+    function showNotification(message, type = 'success') {
+        const toast = document.createElement('div');
+        const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+        toast.className = `p-4 rounded-lg shadow-lg text-white ${bgColor} toast-in`;
+        toast.textContent = message;
+        notificationContainer.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.remove('toast-in');
+            toast.classList.add('toast-out');
+            toast.addEventListener('animationend', () => toast.remove());
+        }, 3000);
+    }
+
+    // --- LÓGICA DO INDICADOR DE CARREGAMENTO ---
+    const loadingOverlay = document.getElementById('loading-overlay');
+    function showLoader() { loadingOverlay.classList.remove('hidden'); loadingOverlay.classList.add('flex'); }
+    function hideLoader() { loadingOverlay.classList.add('hidden'); loadingOverlay.classList.remove('flex'); }
+
+    // --- LÓGICA DE NAVEGAÇÃO ---
     function showPage(pageId) {
         pageContents.forEach(page => page.classList.remove('active'));
         navLinks.forEach(link => link.classList.remove('active'));
@@ -46,120 +82,14 @@ document.addEventListener('DOMContentLoaded', () => {
             showPage(pageId);
         });
     });
-
+    
     // --- LÓGICA DE LOGOUT ---
-    const logoutBtn = document.getElementById('logout-btn');
     logoutBtn.addEventListener('click', () => {
         localStorage.removeItem('jwtToken');
-        alert('Sessão terminada com sucesso!');
-        window.location.href = 'login.html';
-    });
-    
-    // --- ELEMENTOS GLOBAIS DA PÁGINA ---
-    const navLinks = document.querySelectorAll('.nav-link' );
-    const pageContents = document.querySelectorAll('.page-content');
-    const pageTitle = document.getElementById('page-title');
-
-    // --- ELEMENTOS DO MODAL DE EDIÇÃO ---
-    const modalBackdrop = document.getElementById('edit-modal-backdrop');
-    const modal = document.getElementById('edit-modal');
-    const editForm = document.getElementById('edit-form');
-    const editFormFields = document.getElementById('edit-form-fields');
-    const closeModalBtn = document.getElementById('close-modal-btn');
-    const cancelEditBtn = document.getElementById('cancel-edit-btn');
-    let currentEditInfo = {};
-    let allMovimentacoes = [];
-
-    // --- LÓGICA DE NOTIFICAÇÃO (TOAST) ---
-    const notificationContainer = document.getElementById('notification-container');
-
-    function showNotification(message, type = 'success') {
-        const toast = document.createElement('div');
-        const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
-        
-        toast.className = `p-4 rounded-lg shadow-lg text-white ${bgColor} toast-in`;
-        toast.textContent = message;
-        
-        notificationContainer.appendChild(toast);
-        
+        showNotification('Sessão terminada com sucesso!');
         setTimeout(() => {
-            toast.classList.remove('toast-in');
-            toast.classList.add('toast-out');
-            toast.addEventListener('animationend', () => {
-                toast.remove();
-            });
-        }, 3000);
-    }
-
-    // --- LÓGICA DO INDICADOR DE CARREGAMENTO ---
-    const loadingOverlay = document.getElementById('loading-overlay');
-
-    function showLoader() {
-        loadingOverlay.classList.remove('hidden');
-        loadingOverlay.classList.add('flex');
-    }
-
-    function hideLoader() {
-        loadingOverlay.classList.add('hidden');
-        loadingOverlay.classList.remove('flex');
-    }
-
-    // --- LÓGICA DE NAVEGAÇÃO ---
-    function showPage(pageId) {
-        pageContents.forEach(page => page.classList.remove('active'));
-        navLinks.forEach(link => link.classList.remove('active'));
-        
-        const targetPage = document.getElementById(`page-${pageId}`);
-        const targetLink = document.querySelector(`a[href="#${pageId}"]`);
-        
-        if (targetPage) {
-            targetPage.classList.add('active');
-            pageTitle.textContent = targetLink.textContent.trim().replace(/^[^\w]+/, '');
-        }
-        if (targetLink) {
-            targetLink.classList.add('active');
-        }
-        
-        // Carrega os dados da página selecionada
-        if (pageId === 'dashboard') {
-            fetchMovimentacoes();
-        } else if (pageId === 'movimentacoes') {
-            fetchMovimentacoes();
-            
-            // ===== LÓGICA DE FILTRAGEM MOVIDA PARA AQUI =====
-            const searchInput = document.getElementById('search-movimentacoes');
-            searchInput.addEventListener('input', (e) => {
-                const searchTerm = e.target.value.toLowerCase();
-                
-                if (!searchTerm) {
-                    createTable(movimentacoesContainer, allMovimentacoes, 'movimentacoes', 1381900325);
-                    return;
-                }
-
-                const filteredMovimentacoes = allMovimentacoes.filter(mov => {
-                    return Object.values(mov).some(value => 
-                        String(value).toLowerCase().includes(searchTerm)
-                    );
-                });
-
-                createTable(movimentacoesContainer, filteredMovimentacoes, 'movimentacoes', 1381900325);
-            });
-            // =================================================
-
-        } else if (pageId === 'clientes') {
-            fetchClientes();
-        } else if (pageId === 'produtos') {
-            fetchProdutos();
-        }
-    }
-
-    navLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const pageId = link.getAttribute('href').substring(1);
-            window.location.hash = pageId;
-            showPage(pageId);
-        });
+             window.location.href = 'login.html';
+        }, 1000);
     });
 
     // --- FUNÇÕES CRUD (Create, Read, Update, Delete) ---
@@ -168,8 +98,9 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoader();
         try {
             const response = await fetch(`${API_BASE_URL}/api/${entity}`, {
-                headers: getAuthHeaders() // <<<<<<< ALTERAÇÃO AQUI
+                headers: getAuthHeaders() // <<<<<<< TOKEN ENVIADO AQUI
             });
+            // Se o token for inválido, o servidor responderá 401 ou 403
             if (response.status === 401 || response.status === 403) {
                 localStorage.removeItem('jwtToken');
                 window.location.href = 'login.html';
@@ -194,79 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function deleteRow(entity, rowIndex, sheetId) {
-        if (!confirm('Tem a certeza de que quer apagar esta linha?')) return;
-        showLoader();
-        try {
-            const apiRowIndex = rowIndex + 1;
-            const response = await fetch(`${API_BASE_URL}/api/${entity}/${apiRowIndex}`, { 
-                method: 'DELETE',
-                headers: getAuthHeaders(), // <<<<<<< ALTERAÇÃO AQUI
-                body: JSON.stringify({ sheetId })
-            });
-            if (!response.ok) throw new Error(await response.text());
-            showNotification('Registo apagado com sucesso!', 'success');
-            showPage(entity);
-        } catch (error) {
-            console.error(`Erro ao apagar ${entity}:`, error);
-            showNotification(`Falha ao apagar: ${error.message}`, 'error');
-        } finally {
-            hideLoader();
-        }
-    }
-
-    async function handleAddFormSubmit(event, entity, form, fetchFunction) {
-        event.preventDefault();
-        showLoader();
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/${entity}`, {
-                method: 'POST',
-                headers: getAuthHeaders(), // <<<<<<< ALTERAÇÃO AQUI
-                body: JSON.stringify(data)
-            });
-            if (!response.ok) throw new Error(await response.text());
-            showNotification(`${entity.slice(0, -1)} adicionado com sucesso!`, 'success');
-            form.reset();
-            fetchFunction();
-        } catch (error) {
-            console.error(`Erro ao adicionar ${entity}:`, error);
-            showNotification(`Falha ao adicionar: ${error.message}`, 'error');
-        } finally {
-            hideLoader();
-        }
-    }
-
-    editForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        showLoader();
-        const formData = new FormData(editForm);
-        const updatedData = Object.fromEntries(formData.entries());
-        const { entity, rowIndex, sheetId } = currentEditInfo;
-        updatedData.sheetId = sheetId; 
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, {
-                method: 'PUT',
-                headers: getAuthHeaders(), // <<<<<<< ALTERAÇÃO AQUI
-                body: JSON.stringify(updatedData)
-            });
-            const responseText = await response.text();
-            if (!response.ok) {
-                showNotification(`Falha ao atualizar: ${responseText}`, 'error');
-                return; 
-            }
-            showNotification('Registo atualizado com sucesso!', 'success');
-            closeEditModal();
-            showPage(entity);
-        } catch (error) {
-            console.error(`Erro de rede ao atualizar ${entity}:`, error);
-            showNotification(`Erro de rede: ${error.message}`, 'error');
-        } finally {
-            hideLoader();
-        }
-    });
-
     const produtosContainer = document.getElementById('produtos-container');
     function fetchProdutos() { fetchData('produtos', produtosContainer, 18808149); }
 
@@ -282,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, { 
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(), // <<<<<<< TOKEN ENVIADO AQUI
                 body: JSON.stringify({ sheetId })
             });
             if (!response.ok) throw new Error(await response.text());
@@ -297,11 +155,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- LÓGICA DO MODAL DE EDIÇÃO ---
-
     function openEditModal(entity, rowIndex, data, sheetId) {
         currentEditInfo = { entity, rowIndex, sheetId };
         editFormFields.innerHTML = '';
-
         for (const key in data) {
             if (key.toLowerCase() === 'sheetid') continue;
             const fieldWrapper = document.createElement('div');
@@ -319,7 +175,6 @@ document.addEventListener('DOMContentLoaded', () => {
             fieldWrapper.appendChild(input);
             editFormFields.appendChild(fieldWrapper);
         }
-
         modalBackdrop.classList.remove('hidden');
         modalBackdrop.classList.add('flex');
         setTimeout(() => modal.classList.remove('-translate-y-full'), 50);
@@ -339,18 +194,14 @@ document.addEventListener('DOMContentLoaded', () => {
     editForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         showLoader();
-        
         const formData = new FormData(editForm);
         const updatedData = Object.fromEntries(formData.entries());
-        
         const { entity, rowIndex, sheetId } = currentEditInfo;
-        
         updatedData.sheetId = sheetId; 
-
         try {
             const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(), // <<<<<<< TOKEN ENVIADO AQUI
                 body: JSON.stringify(updatedData)
             });
             const responseText = await response.text();
@@ -370,7 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- FUNÇÕES DE FORMATAÇÃO E CRIAÇÃO DE TABELA ---
-
     function formatData(rawData) {
         if (!rawData || rawData.length < 2) return [];
         const headers = rawData[0];
@@ -438,28 +288,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- LÓGICA DOS FORMULÁRIOS DE ADIÇÃO ---
-
-    // Pega a referência dos formulários
     const produtoForm = document.getElementById('add-produto-form');
     const clienteForm = document.getElementById('add-cliente-form');
     const movimentacaoForm = document.getElementById('add-movimentacao-form');
 
-    // Configura os listeners UMA ÚNICA VEZ
     produtoForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'produtos', produtoForm, fetchProdutos));
     clienteForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'clientes', clienteForm, fetchClientes));
     movimentacaoForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'movimentacoes', movimentacaoForm, fetchMovimentacoes));
 
-    // Função genérica para submeter formulários de adição
     async function handleAddFormSubmit(event, entity, form, fetchFunction) {
         event.preventDefault();
         showLoader();
-        
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
         try {
             const response = await fetch(`${API_BASE_URL}/api/${entity}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(), // <<<<<<< TOKEN ENVIADO AQUI
                 body: JSON.stringify(data)
             });
             if (!response.ok) throw new Error(await response.text());
@@ -480,10 +325,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const saldoAtualEl = document.getElementById('saldo-atual');
     const categoryChartCanvas = document.getElementById('categoryChart');
     let categoryChart = null;
-
-    function formatCurrency(value) {
-        return parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
 
     function updateDashboard(data) {
         let totalEntradas = 0, totalSaidas = 0;
@@ -537,4 +378,3 @@ document.addEventListener('DOMContentLoaded', () => {
     const initialPage = window.location.hash.substring(1) || 'dashboard';
     showPage(initialPage);
 });
-
