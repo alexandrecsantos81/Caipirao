@@ -305,5 +305,3 @@ app.post('/auth/login', async (req, res) => {
         res.status(500).send('Erro no servidor durante o login.');
     }
 });
-
-// teste de commit
