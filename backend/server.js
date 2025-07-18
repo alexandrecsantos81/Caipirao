@@ -10,13 +10,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- Middlewares Essenciais ---
-const corsOptions = {
-  origin: 'https://caipiraosys.netlify.app',
-  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-  credentials: true,
-  optionsSuccessStatus: 204
-};
-app.use(cors(corsOptions ));
+app.use(cors({
+    origin: 'https://caipiraosys.netlify.app'
+} ));
 app.use(express.json());
 
 // --- Configuração da Autenticação Google ---
