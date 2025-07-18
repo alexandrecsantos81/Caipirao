@@ -112,12 +112,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- FUNÇÕES CRUD (Create, Read, Update, Delete) ---
 
+    // Variável para armazenar a instância do gráfico
+    let categoryChartInstance = null;
+
+    function updateDashboard(data) {
+        const canvas = document.getElementById('categoryChart');
+        if (!canvas) {
+            console.error('Canvas com ID "categoryChart" não encontrado');
+            return;
+        }
+
+        // Destruir o gráfico existente, se houver
+        if (categoryChartInstance) {
+            categoryChartInstance.destroy();
+            categoryChartInstance = null;
+        }
+
+        // Criar novo gráfico
+        try {
+            categoryChartInstance = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: data.map(item => item.category || 'Desconhecido'),
+                    datasets: [{
+                        label: 'Movimentações por Categoria',
+                        data: data.map(item => item.value || 0),
+                        backgroundColor: ['#3b82f6', '#10b981', '#ef4444'],
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Erro ao criar o gráfico:', error);
+            throw error; // Propaga o erro para fetchData
+        }
+    }
+
     async function fetchData(entity, container, sheetId) {
         if (!entity || !container || !sheetId || !(container instanceof HTMLElement)) {
-            const errorMsg = 'Parâmetros inválidos';
-            console.error(errorMsg, { entity, container, sheetId });
-            container.innerHTML = `<p class="text-red-500">${errorMsg}</p>`;
-            showNotification(errorMsg, 'error');
+            console.error('Parâmetros inválidos', { entity, container, sheetId });
+            container.innerHTML = `<p class="text-red-500">Parâmetros inválidos</p>`;
+            showNotification('Parâmetros inválidos', 'error');
             return;
         }
 
@@ -134,7 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const data = await response.json();
-            console.log('Dados recebidos:', data); // Para depuração
             const formattedData = formatData(data);
 
             if (entity === 'movimentacoes') {
