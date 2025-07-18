@@ -136,38 +136,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- FUNÇÕES CRUD (Create, Read, Update, Delete) ---
     async function fetchData(entity, container, sheetId) {
-        showLoader();
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/${entity}`, {
-                headers: getAuthHeaders()
-            });
-            
-            if (response.status === 401 || response.status === 403) {
-                localStorage.removeItem('jwtToken');
-                window.location.href = 'login.html';
-                return;
-            }
-            
-            if (!response.ok) throw new Error(`Erro HTTP! Status: ${response.status}`);
-            
-            const data = await response.json();
-            const formattedData = formatData(data);
-            
-            if (entity === 'movimentacoes') {
-                allMovimentacoes = formattedData;
-                if (document.getElementById('page-dashboard').classList.contains('active')) {
-                    updateDashboard(formattedData);
-                }
-            }
-            
-            createTable(container, formattedData, entity, sheetId);
-        } catch (error) {
-            console.error(`Erro ao buscar ${entity}:`, error);
-            container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}.</p>`;
-            showNotification(`Falha ao carregar dados de ${entity}`, 'error');
-        } finally {
-            hideLoader();
+    showLoader();
+    const timeout = setTimeout(() => {
+        hideLoader();
+        showNotification('Tempo de carregamento excedido', 'error');
+    }, 10000); // Timeout de 10 segundos
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/${entity}`, {
+        headers: getAuthHeaders()
+        });
+
+        // Limpa o timeout se a requisição concluir antes
+        clearTimeout(timeout);
+
+        if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('jwtToken');
+        window.location.href = 'login.html';
+        return;
         }
+
+        if (!response.ok) throw new Error(`Erro HTTP! Status: ${response.status}`);
+
+        const data = await response.json();
+        const formattedData = formatData(data);
+
+        if (entity === 'movimentacoes') {
+        allMovimentacoes = formattedData;
+        if (document.getElementById('page-dashboard').classList.contains('active')) {
+            updateDashboard(formattedData);
+        }
+        }
+
+        createTable(container, formattedData, entity, sheetId);
+    } catch (error) {
+        clearTimeout(timeout); // Limpa o timeout em caso de erro
+        console.error(`Erro ao buscar ${entity}:`, error);
+        container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}.</p>`;
+        showNotification(`Falha ao carregar dados de ${entity}`, 'error');
+    } finally {
+        hideLoader();
+    }
     }
 
     async function deleteRow(entity, rowIndex, sheetId) {
