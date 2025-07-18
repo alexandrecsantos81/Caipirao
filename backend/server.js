@@ -3,9 +3,11 @@ const express = require('express');
 const cors = require('cors');
 const { google } = require('googleapis');
 const path = require('path');
-const bcrypt = require('bcrypt');
 const app = express();
 const PORT = process.env.PORT || 3000;
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken'); // <-- ADICIONAR ESTA LINHA
+
 
 // --- Middlewares Essenciais para PRODUÇÃO ---
 
@@ -253,8 +255,8 @@ app.listen(PORT, () => {
 
 // --- ROTAS DE AUTENTICAÇÃO ---
 
-// Rota para registar um novo utilizador
-app.post('/auth/register', async (req, res) => {
+// Rota para fazer login de um utilizador
+app.post('/auth/login', async (req, res) => {
     const { email, senha } = req.body;
 
     if (!email || !senha) {
@@ -264,27 +266,43 @@ app.post('/auth/register', async (req, res) => {
     try {
         const sheets = google.sheets({ version: 'v4', auth });
 
-        // 1. "Hashear" a senha de forma segura
-        const saltRounds = 10; // Fator de custo para a segurança do hash
-        const senhaHash = await bcrypt.hash(senha, saltRounds);
-
-        // 2. Preparar a nova linha para a planilha
-        const newRow = [email, senhaHash];
-
-        // 3. Adicionar o novo utilizador à aba "Utilizadores"
-        await sheets.spreadsheets.values.append({
+        // 1. Buscar todos os utilizadores da planilha
+        const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Utilizadores', // Nome exato da aba
-            valueInputOption: 'USER_ENTERED',
-            resource: {
-                values: [newRow],
-            },
+            range: 'Utilizadores!A:B', // Procura nas colunas de Email e Senha
         });
 
-        res.status(201).send('Utilizador registado com sucesso!');
+        const utilizadores = response.data.values || [];
+        // Encontra o utilizador pelo email (ignorando o cabeçalho)
+        const utilizadorEncontrado = utilizadores.slice(1).find(row => row[0] === email);
+
+        if (!utilizadorEncontrado) {
+            return res.status(401).send('Credenciais inválidas.'); // 401 = Não autorizado
+        }
+
+        const emailUtilizador = utilizadorEncontrado[0];
+        const senhaHash = utilizadorEncontrado[1];
+
+        // 2. Comparar a senha fornecida com a senha "hasheada"
+        const senhaCorreta = await bcrypt.compare(senha, senhaHash);
+
+        if (!senhaCorreta) {
+            return res.status(401).send('Credenciais inválidas.');
+        }
+
+        // 3. Se a senha estiver correta, gerar o JWT
+        const token = jwt.sign(
+            { email: emailUtilizador }, // O "payload" do token - o que ele carrega
+            process.env.JWT_SECRET,      // A nossa chave secreta
+            { expiresIn: '8h' }          // Opções: o token expira em 8 horas
+        );
+
+        // 4. Enviar o token de volta para o frontend
+        res.json({ token: token });
 
     } catch (error) {
-        console.error('Erro ao registar utilizador:', error.message);
-        res.status(500).send('Erro no servidor ao registar o utilizador.');
+        console.error('Erro no login:', error.message);
+        res.status(500).send('Erro no servidor durante o login.');
     }
 });
+
