@@ -31,7 +31,7 @@ const auth = new google.auth.GoogleAuth({
 // --- ROTAS DA API (Dados) ---
 
 // Rota para buscar dados de uma aba
-app.get('/api/:sheetName', async (req, res) => {
+app.get('/api/:sheetName', verifyToken, async (req, res) => {
     let { sheetName } = req.params;
     const originalSheetName = sheetName;
     const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
@@ -55,7 +55,7 @@ app.get('/api/:sheetName', async (req, res) => {
 });
 
 // Rota para adicionar dados a uma aba
-app.post('/api/:sheetName', async (req, res) => {
+app.post('/api/:sheetName', verifyToken, async (req, res) => {
     let { sheetName } = req.params;
     const data = req.body;
     const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
@@ -88,7 +88,7 @@ app.post('/api/:sheetName', async (req, res) => {
 });
 
 // Rota para apagar uma linha
-app.delete('/api/:sheetName/:rowIndex', async (req, res) => {
+app.delete('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
     const { sheetName, rowIndex } = req.params;
     const { sheetId } = req.body;
 
@@ -125,7 +125,7 @@ app.delete('/api/:sheetName/:rowIndex', async (req, res) => {
 });
 
 // Rota para atualizar (editar) uma linha
-app.put('/api/:sheetName/:rowIndex', async (req, res) => {
+app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
     const { sheetName, rowIndex } = req.params;
     const updatedData = req.body;
     const { sheetId } = updatedData;
@@ -174,6 +174,24 @@ app.put('/api/:sheetName/:rowIndex', async (req, res) => {
 });
 
 // --- ROTAS DE AUTENTICAÇÃO ---
+
+// --- MIDDLEWARE DE VERIFICAÇÃO DE TOKEN ---
+function verifyToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Formato: "Bearer TOKEN"
+
+    if (token == null) {
+        return res.sendStatus(401); // Unauthorized - Nenhum token fornecido
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) {
+            return res.sendStatus(403); // Forbidden - Token inválido ou expirado
+        }
+        req.user = user;
+        next(); // O token é válido, pode prosseguir para a rota
+    });
+}
 
 // Rota para registar um novo utilizador
 app.post('/auth/register', async (req, res) => {
