@@ -1,11 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- VERIFICAÇÃO INICIAL DE TOKEN ---
+
+    // --- VERIFICAÇÃO INICIAL DE TOKEN (REDUNDANTE, MAS BOA PRÁTICA) ---
     const token = localStorage.getItem('jwtToken');
     if (!token) {
         window.location.href = 'login.html';
-        return;
+        return; // Para a execução do script se não houver token
     }
-
+    
     // URL da API do Backend
     const API_BASE_URL = 'https://api-caipirao-maurizzio-procopio.onrender.com';
 
@@ -17,11 +18,47 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // --- ELEMENTOS GLOBAIS DA PÁGINA ---
+    // --- LÓGICA DE NAVEGAÇÃO (igual a antes) ---
     const navLinks = document.querySelectorAll('.nav-link');
     const pageContents = document.querySelectorAll('.page-content');
     const pageTitle = document.getElementById('page-title');
+
+    function showPage(pageId) {
+        pageContents.forEach(page => page.classList.remove('active'));
+        navLinks.forEach(link => link.classList.remove('active'));
+        const targetPage = document.getElementById(`page-${pageId}`);
+        const targetLink = document.querySelector(`a[href="#${pageId}"]`);
+        if (targetPage) {
+            targetPage.classList.add('active');
+            pageTitle.textContent = targetLink.textContent.trim().replace(/^[^\w]+/, '');
+        }
+        if (targetLink) targetLink.classList.add('active');
+        if (pageId === 'dashboard' || pageId === 'movimentacoes') fetchMovimentacoes();
+        else if (pageId === 'clientes') fetchClientes();
+        else if (pageId === 'produtos') fetchProdutos();
+    }
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const pageId = link.getAttribute('href').substring(1);
+            window.location.hash = pageId;
+            showPage(pageId);
+        });
+    });
+
+    // --- LÓGICA DE LOGOUT ---
     const logoutBtn = document.getElementById('logout-btn');
+    logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('jwtToken');
+        alert('Sessão terminada com sucesso!');
+        window.location.href = 'login.html';
+    });
+    
+    // --- ELEMENTOS GLOBAIS DA PÁGINA ---
+    const navLinks = document.querySelectorAll('.nav-link' );
+    const pageContents = document.querySelectorAll('.page-content');
+    const pageTitle = document.getElementById('page-title');
 
     // --- ELEMENTOS DO MODAL DE EDIÇÃO ---
     const modalBackdrop = document.getElementById('edit-modal-backdrop');
@@ -89,26 +126,26 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (pageId === 'movimentacoes') {
             fetchMovimentacoes();
             
-            // Lógica de filtragem
+            // ===== LÓGICA DE FILTRAGEM MOVIDA PARA AQUI =====
             const searchInput = document.getElementById('search-movimentacoes');
-            if (searchInput) {
-                searchInput.addEventListener('input', (e) => {
-                    const searchTerm = e.target.value.toLowerCase();
-                    
-                    if (!searchTerm) {
-                        createTable(movimentacoesContainer, allMovimentacoes, 'movimentacoes', 1381900325);
-                        return;
-                    }
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                
+                if (!searchTerm) {
+                    createTable(movimentacoesContainer, allMovimentacoes, 'movimentacoes', 1381900325);
+                    return;
+                }
 
-                    const filteredMovimentacoes = allMovimentacoes.filter(mov => {
-                        return Object.values(mov).some(value => 
-                            String(value).toLowerCase().includes(searchTerm)
-                        );
-                    });
-
-                    createTable(movimentacoesContainer, filteredMovimentacoes, 'movimentacoes', 1381900325);
+                const filteredMovimentacoes = allMovimentacoes.filter(mov => {
+                    return Object.values(mov).some(value => 
+                        String(value).toLowerCase().includes(searchTerm)
+                    );
                 });
-            }
+
+                createTable(movimentacoesContainer, filteredMovimentacoes, 'movimentacoes', 1381900325);
+            });
+            // =================================================
+
         } else if (pageId === 'clientes') {
             fetchClientes();
         } else if (pageId === 'produtos') {
@@ -125,41 +162,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // --- LÓGICA DE LOGOUT ---
-    logoutBtn.addEventListener('click', () => {
-        localStorage.removeItem('jwtToken');
-        showNotification('Sessão terminada com sucesso!');
-        setTimeout(() => {
-            window.location.href = 'login.html';
-        }, 1000);
-    });
-
     // --- FUNÇÕES CRUD (Create, Read, Update, Delete) ---
+
     async function fetchData(entity, container, sheetId) {
         showLoader();
         try {
             const response = await fetch(`${API_BASE_URL}/api/${entity}`, {
-                headers: getAuthHeaders()
+                headers: getAuthHeaders() // <<<<<<< ALTERAÇÃO AQUI
             });
-            
             if (response.status === 401 || response.status === 403) {
                 localStorage.removeItem('jwtToken');
                 window.location.href = 'login.html';
                 return;
             }
-            
             if (!response.ok) throw new Error(`Erro HTTP! Status: ${response.status}`);
-            
             const data = await response.json();
             const formattedData = formatData(data);
-            
             if (entity === 'movimentacoes') {
                 allMovimentacoes = formattedData;
                 if (document.getElementById('page-dashboard').classList.contains('active')) {
                     updateDashboard(formattedData);
                 }
             }
-            
             createTable(container, formattedData, entity, sheetId);
         } catch (error) {
             console.error(`Erro ao buscar ${entity}:`, error);
@@ -177,12 +201,91 @@ document.addEventListener('DOMContentLoaded', () => {
             const apiRowIndex = rowIndex + 1;
             const response = await fetch(`${API_BASE_URL}/api/${entity}/${apiRowIndex}`, { 
                 method: 'DELETE',
-                headers: getAuthHeaders(),
+                headers: getAuthHeaders(), // <<<<<<< ALTERAÇÃO AQUI
                 body: JSON.stringify({ sheetId })
             });
-            
             if (!response.ok) throw new Error(await response.text());
-            
+            showNotification('Registo apagado com sucesso!', 'success');
+            showPage(entity);
+        } catch (error) {
+            console.error(`Erro ao apagar ${entity}:`, error);
+            showNotification(`Falha ao apagar: ${error.message}`, 'error');
+        } finally {
+            hideLoader();
+        }
+    }
+
+    async function handleAddFormSubmit(event, entity, form, fetchFunction) {
+        event.preventDefault();
+        showLoader();
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/${entity}`, {
+                method: 'POST',
+                headers: getAuthHeaders(), // <<<<<<< ALTERAÇÃO AQUI
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) throw new Error(await response.text());
+            showNotification(`${entity.slice(0, -1)} adicionado com sucesso!`, 'success');
+            form.reset();
+            fetchFunction();
+        } catch (error) {
+            console.error(`Erro ao adicionar ${entity}:`, error);
+            showNotification(`Falha ao adicionar: ${error.message}`, 'error');
+        } finally {
+            hideLoader();
+        }
+    }
+
+    editForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        showLoader();
+        const formData = new FormData(editForm);
+        const updatedData = Object.fromEntries(formData.entries());
+        const { entity, rowIndex, sheetId } = currentEditInfo;
+        updatedData.sheetId = sheetId; 
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, {
+                method: 'PUT',
+                headers: getAuthHeaders(), // <<<<<<< ALTERAÇÃO AQUI
+                body: JSON.stringify(updatedData)
+            });
+            const responseText = await response.text();
+            if (!response.ok) {
+                showNotification(`Falha ao atualizar: ${responseText}`, 'error');
+                return; 
+            }
+            showNotification('Registo atualizado com sucesso!', 'success');
+            closeEditModal();
+            showPage(entity);
+        } catch (error) {
+            console.error(`Erro de rede ao atualizar ${entity}:`, error);
+            showNotification(`Erro de rede: ${error.message}`, 'error');
+        } finally {
+            hideLoader();
+        }
+    });
+
+    const produtosContainer = document.getElementById('produtos-container');
+    function fetchProdutos() { fetchData('produtos', produtosContainer, 18808149); }
+
+    const clientesContainer = document.getElementById('clientes-container');
+    function fetchClientes() { fetchData('clientes', clientesContainer, 1386962696); }
+
+    const movimentacoesContainer = document.getElementById('movimentacoes-container');
+    function fetchMovimentacoes() { fetchData('movimentacoes', movimentacoesContainer, 1381900325); }
+
+    async function deleteRow(entity, rowIndex, sheetId) {
+        if (!confirm('Tem a certeza de que quer apagar esta linha?')) return;
+        showLoader();
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, { 
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sheetId })
+            });
+            if (!response.ok) throw new Error(await response.text());
             showNotification('Registo apagado com sucesso!', 'success');
             showPage(entity);
         } catch (error) {
@@ -194,26 +297,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- LÓGICA DO MODAL DE EDIÇÃO ---
+
     function openEditModal(entity, rowIndex, data, sheetId) {
         currentEditInfo = { entity, rowIndex, sheetId };
         editFormFields.innerHTML = '';
 
         for (const key in data) {
             if (key.toLowerCase() === 'sheetid') continue;
-            
             const fieldWrapper = document.createElement('div');
             const label = document.createElement('label');
             label.htmlFor = `edit-${key}`;
             label.className = 'block text-sm font-medium text-slate-700';
             label.textContent = key;
-            
             const input = document.createElement('input');
             input.type = 'text';
             input.id = `edit-${key}`;
             input.name = key;
             input.value = data[key];
             input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm';
-            
             fieldWrapper.appendChild(label);
             fieldWrapper.appendChild(input);
             editFormFields.appendChild(fieldWrapper);
@@ -241,22 +342,22 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const formData = new FormData(editForm);
         const updatedData = Object.fromEntries(formData.entries());
-        const { entity, rowIndex, sheetId } = currentEditInfo;
-        updatedData.sheetId = sheetId;
         
+        const { entity, rowIndex, sheetId } = currentEditInfo;
+        
+        updatedData.sheetId = sheetId; 
+
         try {
             const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, {
                 method: 'PUT',
-                headers: getAuthHeaders(),
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedData)
             });
-            
             const responseText = await response.text();
             if (!response.ok) {
                 showNotification(`Falha ao atualizar: ${responseText}`, 'error');
-                return;
+                return; 
             }
-            
             showNotification('Registo atualizado com sucesso!', 'success');
             closeEditModal();
             showPage(entity);
@@ -269,12 +370,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- FUNÇÕES DE FORMATAÇÃO E CRIAÇÃO DE TABELA ---
+
     function formatData(rawData) {
         if (!rawData || rawData.length < 2) return [];
-        
         const headers = rawData[0];
         const dataRows = rawData.slice(1);
-        
         return dataRows.map(row => {
             const rowData = {};
             headers.forEach((header, index) => {
@@ -286,97 +386,83 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createTable(container, data, entityName, sheetId) {
         container.innerHTML = '';
-        
         if (!data || data.length === 0) {
             container.innerHTML = '<p>Nenhum dado encontrado.</p>';
             return;
         }
-        
         const table = document.createElement('table');
         table.className = 'w-full text-left';
-        
         const thead = document.createElement('thead');
         thead.className = 'bg-slate-100';
-        
         const headerRow = document.createElement('tr');
         const headers = Object.keys(data[0] || {});
-        
         headers.forEach(headerText => {
             const th = document.createElement('th');
             th.className = 'p-3 font-semibold';
             th.textContent = headerText;
             headerRow.appendChild(th);
         });
-        
         const thAcoes = document.createElement('th');
         thAcoes.className = 'p-3 font-semibold text-right';
         thAcoes.textContent = 'Ações';
         headerRow.appendChild(thAcoes);
-        
         thead.appendChild(headerRow);
         table.appendChild(thead);
-        
         const tbody = document.createElement('tbody');
-        
         data.forEach((rowData, index) => {
             const row = document.createElement('tr');
             row.className = 'border-b border-slate-200 hover:bg-slate-50';
-            
             headers.forEach(header => {
                 const td = document.createElement('td');
                 td.className = 'p-3';
                 td.textContent = rowData[header];
                 row.appendChild(td);
             });
-            
             const tdBotao = document.createElement('td');
             tdBotao.className = 'p-3 text-right space-x-2';
-            
             const editButton = document.createElement('button');
             editButton.textContent = 'Editar';
             editButton.className = 'bg-blue-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-blue-600';
             editButton.addEventListener('click', () => openEditModal(entityName, index, rowData, sheetId));
             tdBotao.appendChild(editButton);
-            
             const deleteButton = document.createElement('button');
             deleteButton.textContent = 'Apagar';
             deleteButton.className = 'bg-red-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-red-600';
             deleteButton.addEventListener('click', () => deleteRow(entityName, index, sheetId));
             tdBotao.appendChild(deleteButton);
-            
             row.appendChild(tdBotao);
             tbody.appendChild(row);
         });
-        
         table.appendChild(tbody);
         container.appendChild(table);
     }
 
     // --- LÓGICA DOS FORMULÁRIOS DE ADIÇÃO ---
+
+    // Pega a referência dos formulários
     const produtoForm = document.getElementById('add-produto-form');
     const clienteForm = document.getElementById('add-cliente-form');
     const movimentacaoForm = document.getElementById('add-movimentacao-form');
 
+    // Configura os listeners UMA ÚNICA VEZ
     produtoForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'produtos', produtoForm, fetchProdutos));
     clienteForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'clientes', clienteForm, fetchClientes));
     movimentacaoForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'movimentacoes', movimentacaoForm, fetchMovimentacoes));
 
+    // Função genérica para submeter formulários de adição
     async function handleAddFormSubmit(event, entity, form, fetchFunction) {
         event.preventDefault();
         showLoader();
         
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
-        
         try {
             const response = await fetch(`${API_BASE_URL}/api/${entity}`, {
                 method: 'POST',
-                headers: getAuthHeaders(),
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            
             if (!response.ok) throw new Error(await response.text());
-            
             showNotification(`${entity.slice(0, -1)} adicionado com sucesso!`, 'success');
             form.reset();
             fetchFunction();
@@ -402,7 +488,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateDashboard(data) {
         let totalEntradas = 0, totalSaidas = 0;
         const categoryTotals = {};
-        
         if (Array.isArray(data)) {
             data.forEach(mov => {
                 if (mov && typeof mov === 'object') {
@@ -410,7 +495,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const valor = parseFloat(valorString.replace('R$', '').replace(/\./g, '').replace(',', '.').trim()) || 0;
                     const tipo = mov['Tipo (Entrada/Saída)'];
                     const categoria = mov.Categoria;
-                    
                     if (tipo === 'Entrada') {
                         totalEntradas += valor;
                         if (categoria) categoryTotals[categoria] = (categoryTotals[categoria] || 0) + valor;
@@ -421,7 +505,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
-        
         totalEntradasEl.textContent = formatCurrency(totalEntradas);
         totalSaidasEl.textContent = formatCurrency(totalSaidas);
         saldoAtualEl.textContent = formatCurrency(totalEntradas - totalSaidas);
@@ -431,11 +514,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateChart(categoryData) {
         const labels = Object.keys(categoryData);
         const data = Object.values(categoryData);
-        
         if (categoryChart) {
             categoryChart.destroy();
         }
-        
         const ctx = categoryChartCanvas.getContext('2d');
         categoryChart = new Chart(ctx, {
             type: 'doughnut',
@@ -455,10 +536,4 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- INICIALIZAÇÃO DA APLICAÇÃO ---
     const initialPage = window.location.hash.substring(1) || 'dashboard';
     showPage(initialPage);
-
-    // --- MANIPULADOR DE ERRO GLOBAL ---
-    window.addEventListener('error', function(error) {
-        showNotification(`Ocorreu um erro inesperado: ${error.message}`, 'error');
-        console.error('Erro global:', error);
-    });
 });
