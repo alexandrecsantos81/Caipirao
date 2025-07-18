@@ -113,28 +113,43 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- FUNÇÕES CRUD (Create, Read, Update, Delete) ---
 
     async function fetchData(entity, container, sheetId) {
+        if (!entity || !container || !sheetId || !(container instanceof HTMLElement)) {
+            const errorMsg = 'Parâmetros inválidos';
+            console.error(errorMsg, { entity, container, sheetId });
+            container.innerHTML = `<p class="text-red-500">${errorMsg}</p>`;
+            showNotification(errorMsg, 'error');
+            return;
+        }
+
         showLoader();
         try {
             const response = await fetch(`${API_BASE_URL}/api/${entity}`);
             if (!response.ok) {
                 throw new Error(`Erro HTTP! Status: ${response.status}`);
             }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Resposta da API não é JSON');
+            }
+
             const data = await response.json();
+            console.log('Dados recebidos:', data); // Para depuração
             const formattedData = formatData(data);
-            
+
             if (entity === 'movimentacoes') {
                 allMovimentacoes = formattedData;
-                if (document.getElementById('page-dashboard').classList.contains('active')) {
+                const dashboard = document.getElementById('page-dashboard');
+                if (dashboard && dashboard.classList.contains('active')) {
                     updateDashboard(formattedData);
                 }
             }
-            
-            createTable(container, formattedData, entity, sheetId);
 
+            createTable(container, formattedData, entity, sheetId);
         } catch (error) {
             console.error(`Erro ao buscar ${entity}:`, error);
-            container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}.</p>`;
-            showNotification(`Falha ao carregar dados de ${entity}`, 'error');
+            container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}: ${error.message}</p>`;
+            showNotification(`Falha ao carregar dados de ${entity}: ${error.message}`, 'error');
         } finally {
             hideLoader();
         }
