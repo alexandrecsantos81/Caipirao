@@ -310,37 +310,23 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
 
     try {
         const sheets = google.sheets({ version: 'v4', auth });
-        let newRow = [];
+        
+        const headerResponse = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${actualSheetName}!1:1`,
+        });
+        const headers = headerResponse.data.values[0];
 
-        // Lógica explícita para cada tipo de entidade para garantir a ordem correta
-        if (actualSheetName === 'Clientes') {
-            newRow = [
-                data['ID'] || '',
-                data['Nome'] || '',
-                data['Contato'] || '',
-                data['Endereço'] || ''
-            ];
-        } else if (actualSheetName === 'Produtos') {
-            newRow = [
-                data['ID'] || '',
-                data['Nome'] || '',
-                data['Descrição'] || '',
-                data['Preço'] ? parseFloat(String(data['Preço']).replace(',', '.')) : ''
-            ];
-        } else if (actualSheetName === '_Movimentacoes') {
-            newRow = [
-                data['ID Mov.'] || '',
-                data['Data'] || '',
-                data['Tipo (Entrada/Saída)'] || '',
-                data['Categoria'] || '',
-                data['Descrição'] || '',
-                data['Valor'] ? parseFloat(String(data['Valor']).replace(',', '.')) : '',
-                data['Responsável'] || '',
-                data['Observações'] || ''
-            ];
-        } else {
-            return res.status(400).send('Tipo de entidade não suportado para adição.');
-        }
+        const newRow = headers.map(header => {
+            const dataKey = Object.keys(data).find(k => k.toLowerCase() === header.toLowerCase());
+            const value = dataKey ? data[dataKey] : '';
+
+            if ((header.toLowerCase() === 'preço' || header.toLowerCase() === 'valor') && value) {
+                const numericValue = parseFloat(String(value).replace(',', '.'));
+                return isNaN(numericValue) ? '' : numericValue;
+            }
+            return value;
+        });
 
         await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
@@ -356,6 +342,7 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
         res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
     }
 });
+
 
 // Rota para fazer login de um utilizador
 app.post('/auth/login', async (req, res) => {
