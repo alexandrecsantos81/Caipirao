@@ -218,7 +218,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(await response.text());
             
             showNotification('Registo apagado com sucesso!', 'success');
-            showPage(entity);
+            const table = document.querySelector(`#page-${entity} table`);
+            if (table && table.rows.length > rowIndex + 1) { // +1 por causa do cabeçalho
+                // A linha a ser removida é rowIndex + 1 porque table.rows inclui o <thead>
+                table.deleteRow(rowIndex + 1); 
+            } else {
+                // Se não conseguir remover a linha, recarrega a página como fallback
+                showPage(entity);
+            }
         } catch (error) {
             console.error(`Erro ao apagar ${entity}:`, error);
             showNotification(`Falha ao apagar: ${error.message}`, 'error');
