@@ -213,43 +213,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // VERSÃO FINAL E CORRIGIDA DA FUNÇÃO deleteRow
-    async function deleteRow(entity, rowIndex, sheetId) {
-        if (!confirm('Tem a certeza de que quer apagar esta linha?')) return;
-        showLoader();
+    async function deleteRow(entity, rowData, sheetId) { // Mudança: recebemos o objeto 'rowData'
+        // Usamos o ID do objeto de dados como identificador único
+        const uniqueId = rowData['ID']; 
+        if (!uniqueId) {
+            showNotification('Não foi possível apagar: o registo não tem um ID.', 'error');
+            return;
+        }
 
+        if (!confirm(`Tem a certeza de que quer apagar o registo com ID: ${uniqueId}?`)) return;
+        
+        showLoader();
         try {
-            // O índice para a API do Google é o índice visual + 1 (por causa do cabeçalho)
-            const apiRowIndex = rowIndex + 1;
-            
-            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}/${apiRowIndex}?sheetId=${sheetId}`, {
+            // Enviamos o ID como um query parameter
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}?id=${uniqueId}&sheetId=${sheetId}`, { 
                 method: 'DELETE',
                 headers: getAuthHeaders()
+                // O corpo (body) não é mais necessário
             });
-
-            if (!response.ok) {
-                // Se a API falhar, lança um erro para ser pego pelo catch
-                throw new Error(await response.text());
-            }
-
-            // Se a API teve sucesso, atualizamos o estado local e a UI
+            
+            if (!response.ok) throw new Error(await response.text());
+            
             showNotification('Registo apagado com sucesso!', 'success');
-
-            // 1. Atualiza o array de dados local
+            
+            // Atualiza a UI de forma otimista
             if (entity === 'clientes') {
-                allClientes.splice(rowIndex, 1); // Remove 1 item no índice 'rowIndex'
+                fetchClientes();
             } else if (entity === 'produtos') {
-                allProdutos.splice(rowIndex, 1);
+                fetchProdutos();
             } else if (entity === 'movimentacoes') {
-                // Para movimentações, a lógica é mais complexa por causa da busca
-                // A maneira mais segura é recarregar os dados
                 fetchMovimentacoes();
-                return; // Sai da função para evitar a remoção manual da linha
-            }
-
-            // 2. Atualiza a UI (tabela HTML)
-            const table = document.querySelector(`#page-${entity} table`);
-            if (table && table.rows.length > rowIndex + 1) {
-                table.deleteRow(rowIndex + 1);
             }
 
         } catch (error) {
@@ -259,6 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hideLoader();
         }
     }
+
 
     // --- LÓGICA DO MODAL DE EDIÇÃO ---
     function openEditModal(entity, rowIndex, data, sheetId) {
@@ -408,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const deleteButton = document.createElement('button');
             deleteButton.textContent = 'Apagar';
             deleteButton.className = 'bg-red-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-red-600';
-            deleteButton.addEventListener('click', () => deleteRow(entityName, index, sheetId));
+            deleteButton.addEventListener('click', () => deleteRow(entityName, rowData, sheetId));
             tdBotao.appendChild(deleteButton);
             
             row.appendChild(tdBotao);

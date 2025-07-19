@@ -141,53 +141,71 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
 });
 
 
-    // Rota para apagar uma linha (VERSÃO FINAL - USANDO CLEAR EM VEZ DE DELETE)
-    app.delete('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
-        const { sheetName, rowIndex } = req.params;
-        const { sheetId } = req.query;
+// Rota para apagar uma linha (VERSÃO FINAL E ROBUSTA - USANDO ID)
+app.delete('/api/:sheetName', verifyToken, async (req, res) => {
+    const { sheetName } = req.params;
+    const { id, sheetId } = req.query; // Pegamos o ID dos query params
 
-        // Validações (mantidas como estão)
-        if (!['movimentacoes', 'clientes', 'produtos'].includes(sheetName.toLowerCase())) {
-            return res.status(400).send('Nome da planilha inválido.');
+    // Validações
+    if (!['movimentacoes', 'clientes', 'produtos'].includes(sheetName.toLowerCase())) {
+        return res.status(400).send('Nome da planilha inválido.');
+    }
+    if (!id) {
+        return res.status(400).send('O ID do registo é obrigatório para a exclusão.');
+    }
+
+    try {
+        const sheets = google.sheets({ version: 'v4', auth });
+        const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
+        const actualSheetName = allowedSheets[sheetName.toLowerCase()];
+
+        // 1. LER TODOS OS DADOS DA PLANILHA
+        const getRows = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: actualSheetName,
+        });
+        const allData = getRows.data.values || [];
+        const headers = allData[0];
+        const idColumnIndex = headers.findIndex(header => header.toUpperCase() === 'ID');
+
+        if (idColumnIndex === -1) {
+            return res.status(500).send('A coluna "ID" não foi encontrada na planilha.');
         }
-        if (!sheetId || sheetId === '0') {
-            return res.status(400).send('O ID da aba (sheetId) é inválido ou não foi fornecido.');
+
+        // 2. ENCONTRAR A LINHA FÍSICA QUE CORRESPONDE AO ID
+        let targetRowIndex = -1;
+        for (let i = 1; i < allData.length; i++) { // Começa em 1 para pular o cabeçalho
+            if (allData[i][idColumnIndex] === id) {
+                targetRowIndex = i; // Encontramos o índice físico (base 0)
+                break;
+            }
         }
 
-        try {
-            const sheets = google.sheets({ version: 'v4', auth });
-            
-            // Mapeia o nome da aba para o nome real usado na planilha
-            const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
-            const actualSheetName = allowedSheets[sheetName.toLowerCase()];
-
-            // Calcula a linha correta na planilha (índice do frontend + 2)
-            // +1 porque o índice do frontend é base 0
-            // +1 porque a planilha tem uma linha de cabeçalho
-            const targetRow = parseInt(rowIndex, 10) + 2;
-
-            // Define o range a ser limpo, ex: 'Clientes!A92:Z92'
-            // Usamos A:Z para garantir que todas as colunas da linha sejam limpas
-            const rangeToClear = `${actualSheetName}!A${targetRow}:Z${targetRow}`;
-
-            console.log(`--- TENTATIVA DE LIMPAR LINHA ---`);
-            console.log(`Range a ser limpo: ${rangeToClear}`);
-
-            // Usa o método 'spreadsheets.values.clear', que é mais robusto
-            await sheets.spreadsheets.values.clear({
-                spreadsheetId: SPREADSHEET_ID,
-                range: rangeToClear,
-            });
-
-            console.log(`SUCESSO: Range ${rangeToClear} limpo na API do Google.`);
-            res.status(200).send(`Linha ${rowIndex} limpa com sucesso.`);
-
-        } catch (error) {
-            console.error('!!! ERRO DA API DO GOOGLE AO TENTAR LIMPAR A LINHA !!!');
-            console.error(error.message);
-            res.status(500).send(`Erro no servidor ao limpar a linha: ${error.message}`);
+        if (targetRowIndex === -1) {
+            return res.status(404).send(`Registo com ID "${id}" não encontrado.`);
         }
-    });
+
+        // 3. LIMPAR A LINHA CORRETA
+        const targetRow = targetRowIndex + 1; // Converte para o número da linha (base 1)
+        const rangeToClear = `${actualSheetName}!A${targetRow}:Z${targetRow}`;
+
+        console.log(`--- TENTATIVA DE LIMPAR LINHA POR ID ---`);
+        console.log(`ID a ser apagado: ${id}. Linha física encontrada: ${targetRow}. Range: ${rangeToClear}`);
+
+        await sheets.spreadsheets.values.clear({
+            spreadsheetId: SPREADSHEET_ID,
+            range: rangeToClear,
+        });
+
+        console.log(`SUCESSO: Range ${rangeToClear} limpo na API do Google.`);
+        res.status(200).send(`Registo com ID ${id} limpo com sucesso.`);
+
+    } catch (error) {
+        console.error('!!! ERRO DA API DO GOOGLE AO TENTAR LIMPAR A LINHA POR ID !!!');
+        console.error(error.message);
+        res.status(500).send(`Erro no servidor ao limpar a linha: ${error.message}`);
+    }
+});
 
 
 // Rota para atualizar (editar) uma linha
