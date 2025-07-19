@@ -19,6 +19,14 @@
 </head>
 <body class="bg-slate-100">
 
+    <script>
+        // Script de proteção de rota
+        const token = localStorage.getItem('jwtToken');
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+    </script>
+
     <div class="flex h-screen bg-slate-100">
         <!-- Barra de Navegação Lateral -->
         <aside class="w-64 bg-white shadow-md flex-shrink-0">
@@ -39,6 +47,14 @@
                 <a href="#produtos" class="nav-link block py-3 px-6 text-slate-700 hover:bg-slate-50 transition duration-200">
                     <span>📦</span> Produtos
                 </a>
+
+            <div class="p-6 mt-auto">
+            <button id="logout-btn" class="w-full flex items-center justify-center py-2 px-4 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition duration-200">
+                <span>🔒</span>
+                <span class="ml-2">Logout</span>
+            </button>
+        </div>
+
             </nav>
         </aside>
 
