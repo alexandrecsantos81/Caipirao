@@ -219,74 +219,80 @@ app.delete('/api/:sheetName', verifyToken, async (req, res) => {
 });
 
 
-    // Rota para atualizar (editar) uma linha (VERSÃO FINAL CORRIGIDA)
-    app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
-        const { sheetName, rowIndex } = req.params;
-        const updatedData = req.body;
-        const { sheetId } = updatedData;
-        const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
-        const actualSheetName = allowedSheets[sheetName.toLowerCase()];
+// Rota para atualizar (editar) uma linha (VERSÃO FINALÍSSIMA)
+app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
+    const { sheetName, rowIndex } = req.params;
+    const updatedData = req.body;
+    const { sheetId } = updatedData;
+    const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
+    const actualSheetName = allowedSheets[sheetName.toLowerCase()];
 
-        if (!actualSheetName) {
-            return res.status(400).send('Nome da planilha inválido.');
-        }
-        if (sheetId === undefined) {
-            return res.status(400).send('O ID da aba (sheetId) é necessário para a edição.');
-        }
+    if (!actualSheetName) {
+        return res.status(400).send('Nome da planilha inválido.');
+    }
+    if (sheetId === undefined) {
+        return res.status(400).send('O ID da aba (sheetId) é necessário para a edição.');
+    }
 
-        try {
-            const sheets = google.sheets({ version: 'v4', auth });
-            let updatedRowValues = [];
+    try {
+        const sheets = google.sheets({ version: 'v4', auth });
+        let updatedRowValues = [];
+        let fieldsToUpdate = 'userEnteredValue'; // Padrão para strings
 
-            // Lógica específica para cada aba para garantir a ordem e o formato corretos
-            if (actualSheetName === 'Clientes') {
-                updatedRowValues = [
-                    { userEnteredValue: { stringValue: updatedData['ID'] || '' } },
-                    { userEnteredValue: { stringValue: updatedData['Nome'] || '' } },
-                    { userEnteredValue: { stringValue: updatedData['Contato'] || '' } },
-                    { userEnteredValue: { stringValue: updatedData['Endereço'] || '' } }
-                ];
-            } else if (actualSheetName === 'Produtos') {
-                // LÓGICA NOVA E ESPECÍFICA PARA PRODUTOS NA EDIÇÃO
-                const preco = updatedData['Preço'] ? String(updatedData['Preço']).replace(',', '.') : '';
-                updatedRowValues = [
-                    { userEnteredValue: { stringValue: updatedData['ID'] || '' } },
-                    { userEnteredValue: { stringValue: updatedData['Nome'] || '' } },
-                    { userEnteredValue: { stringValue: updatedData['Descrição'] || '' } },
-                    // Garante que o preço seja tratado como um número
-                    { userEnteredValue: { numberValue: preco ? parseFloat(preco) : null } }
-                ];
-            } else {
-                // Lógica genérica mantida para _Movimentacoes
-                const headerResponse = await sheets.spreadsheets.values.get({
-                    spreadsheetId: SPREADSHEET_ID,
-                    range: `${actualSheetName}!1:1`,
-                });
-                const headers = headerResponse.data.values[0];
-                updatedRowValues = headers.map(header => {
-                    const value = updatedData[header] || '';
-                    return { userEnteredValue: { stringValue: value.toString() } };
-                });
-            }
-
-            await sheets.spreadsheets.batchUpdate({
-                spreadsheetId: SPREADSHEET_ID,
-                resource: {
-                    requests: [{
-                        updateCells: {
-                            start: { sheetId: parseInt(sheetId, 10), rowIndex: parseInt(rowIndex, 10) + 1, columnIndex: 0 },
-                            rows: [{ values: updatedRowValues }],
-                            fields: 'userEnteredValue' // Apenas o valor é necessário
-                        }
-                    }]
+        // Lógica específica para cada aba
+        if (actualSheetName === 'Clientes') {
+            updatedRowValues = [
+                { userEnteredValue: { stringValue: updatedData['ID'] || '' } },
+                { userEnteredValue: { stringValue: updatedData['Nome'] || '' } },
+                { userEnteredValue: { stringValue: updatedData['Contato'] || '' } },
+                { userEnteredValue: { stringValue: updatedData['Endereço'] || '' } }
+            ];
+        } else if (actualSheetName === 'Produtos') {
+            const preco = updatedData['Preço'] ? String(updatedData['Preço']).replace(',', '.') : '';
+            updatedRowValues = [
+                { userEnteredValue: { stringValue: updatedData['ID'] || '' } },
+                { userEnteredValue: { stringValue: updatedData['Nome'] || '' } },
+                { userEnteredValue: { stringValue: updatedData['Descrição'] || '' } },
+                { 
+                    userEnteredValue: { numberValue: preco ? parseFloat(preco) : null },
+                    // Força a formatação de moeda na edição
+                    userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"R$"#,##0.00' } }
                 }
+            ];
+            // Informa à API que também estamos atualizando o formato
+            fieldsToUpdate = 'userEnteredValue,userEnteredFormat'; 
+        } else {
+            // Lógica genérica para _Movimentacoes (se necessário)
+            const headerResponse = await sheets.spreadsheets.values.get({
+                spreadsheetId: SPREADSHEET_ID,
+                range: `${actualSheetName}!1:1`,
             });
-            res.status(200).send('Registo atualizado com sucesso!');
-        } catch (error) {
-            console.error(`Erro ao atualizar registo na aba ${actualSheetName}:`, error.message);
-            res.status(500).send(`Erro ao atualizar registo: ${error.message}`);
+            const headers = headerResponse.data.values[0];
+            updatedRowValues = headers.map(header => {
+                const value = updatedData[header] || '';
+                return { userEnteredValue: { stringValue: value.toString() } };
+            });
         }
-    });
+
+        await sheets.spreadsheets.batchUpdate({
+            spreadsheetId: SPREADSHEET_ID,
+            resource: {
+                requests: [{
+                    updateCells: {
+                        start: { sheetId: parseInt(sheetId, 10), rowIndex: parseInt(rowIndex, 10) + 1, columnIndex: 0 },
+                        rows: [{ values: updatedRowValues }],
+                        fields: fieldsToUpdate // Usa a variável correta de campos
+                    }
+                }]
+            }
+        });
+        res.status(200).send('Registo atualizado com sucesso!');
+    } catch (error) {
+        console.error(`Erro ao atualizar registo na aba ${actualSheetName}:`, error.message);
+        res.status(500).send(`Erro ao atualizar registo: ${error.message}`);
+    }
+});
+
 
 // --- ROTAS DE AUTENTICAÇÃO ---
 
