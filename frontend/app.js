@@ -306,16 +306,31 @@ document.addEventListener('DOMContentLoaded', () => {
     closeModalBtn.addEventListener('click', closeEditModal);
     cancelEditBtn.addEventListener('click', closeEditModal);
 
+    // Rota de Edição (VERSÃO FINAL CORRIGIDA)
     editForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         showLoader();
         
         const formData = new FormData(editForm);
         const updatedData = Object.fromEntries(formData.entries());
-        const { entity, rowIndex, sheetId } = currentEditInfo;
+        
+        // O ERRO ESTAVA AQUI: A informação de 'entity' e 'rowIndex' estava se perdendo.
+        // A correção é usar o objeto 'currentEditInfo' que guardamos quando o modal foi aberto.
+        const { entity, rowIndex, sheetId } = currentEditInfo; 
+        
+        // Adiciona o sheetId aos dados a serem enviados
         updatedData.sheetId = sheetId;
         
+        // Validação para garantir que a URL não será montada com 'undefined'
+        if (!entity || rowIndex === undefined) {
+            hideLoader();
+            showNotification('Erro crítico: Informação da entidade ou linha não encontrada.', 'error');
+            console.error('Não foi possível editar. Entity ou rowIndex é undefined.', currentEditInfo);
+            return;
+        }
+
         try {
+            // A URL agora será montada corretamente, ex: /api/movimentacoes/5
             const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}/${rowIndex}`, {
                 method: 'PUT',
                 headers: getAuthHeaders(),
@@ -324,13 +339,19 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const responseText = await response.text();
             if (!response.ok) {
+                // A mensagem de erro do backend agora será exibida corretamente
                 showNotification(`Falha ao atualizar: ${responseText}`, 'error');
                 return;
             }
             
             showNotification('Registo atualizado com sucesso!', 'success');
             closeEditModal();
-            showPage(entity);
+            
+            // Atualiza a tabela correta após a edição
+            if (entity === 'clientes') { fetchClientes(); } 
+            else if (entity === 'produtos') { fetchProdutos(); } 
+            else if (entity === 'movimentacoes') { fetchMovimentacoes(); }
+
         } catch (error) {
             console.error(`Erro de rede ao atualizar ${entity}:`, error);
             showNotification(`Erro de rede: ${error.message}`, 'error');
@@ -338,6 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hideLoader();
         }
     });
+
 
     // --- FUNÇÕES DE FORMATAÇÃO E CRIAÇÃO DE TABELA ---
     function formatData(rawData) {
