@@ -134,6 +134,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1000);
     });
 
+        // --- FUNÇÕES ESPECÍFICAS DE FETCH ---
+    const movimentacoesContainer = document.getElementById('movimentacoes-container');
+    const clientesContainer = document.getElementById('clientes-container');
+    const produtosContainer = document.getElementById('produtos-container');
+
+    function fetchMovimentacoes() {
+        // O ID da aba (sheetId) para _Movimentacoes é 1381900325 (conforme seu código)
+        fetchData('movimentacoes', movimentacoesContainer, 1381900325);
+    }
+
+    function fetchClientes() {
+        // Você precisará encontrar o sheetId para Clientes
+        // Exemplo: fetchData('clientes', clientesContainer, SEU_SHEET_ID_CLIENTES);
+        // Por enquanto, vamos deixar sem o ID para ver se funciona
+        fetchData('clientes', clientesContainer, 1386962696); // Use 0 ou o ID correto
+    }
+
+    function fetchProdutos() {
+        // Você precisará encontrar o sheetId para Produtos
+        // Exemplo: fetchData('produtos', produtosContainer, SEU_SHEET_ID_PRODUTOS);
+        // Por enquanto, vamos deixar sem o ID para ver se funciona
+        fetchData('produtos', produtosContainer, 18808149); // Use 0 ou o ID correto
+    }
+
     // --- FUNÇÕES CRUD (Create, Read, Update, Delete) ---
     async function fetchData(entity, container, sheetId) {
     showLoader();
