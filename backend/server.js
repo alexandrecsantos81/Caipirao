@@ -202,69 +202,73 @@ app.delete('/api/:sheetName', verifyToken, async (req, res) => {
 });
 
 
-// Rota para atualizar (editar) uma linha (VERSÃO FINALÍSSIMA POR ID E SEM ROWINDEX NA URL)
+// VERSÃO FINAL DA ROTA DE ATUALIZAÇÃO (PUT)
 app.put('/api/:sheetName', verifyToken, async (req, res) => {
     const { sheetName } = req.params;
     const updatedData = req.body;
-    // Pega o 'id' e 'sheetId' do corpo da requisição
-    const { id, sheetId } = updatedData; 
+    const { id } = updatedData; // Pega o ID de dentro do corpo da requisição
 
+    // Validações
+    if (!id) {
+        return res.status(400).send('Erro: O ID do registo é obrigatório para a edição.');
+    }
     const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
     const actualSheetName = allowedSheets[sheetName.toLowerCase()];
-
-    if (!actualSheetName) { return res.status(400).send('Nome da planilha inválido.'); }
-    if (!id) { return res.status(400).send('O ID do registo é obrigatório para a edição.'); }
-    if (sheetId === undefined) { return res.status(400).send('O ID da aba (sheetId) é necessário para a edição.'); }
+    if (!actualSheetName) {
+        return res.status(400).send('Nome da planilha inválido.');
+    }
 
     try {
         const sheets = google.sheets({ version: 'v4', auth });
+
+        // 1. Encontrar a linha física do registo pelo ID
+        const getResponse = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: actualSheetName,
+        });
+        const allRows = getResponse.data.values || [];
+        const headers = allRows[0];
+        const idColumnIndex = headers.findIndex(header => header === 'ID' || header === 'ID Mov.');
         
-        const getRows = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: actualSheetName });
-        const allData = getRows.data.values || [];
-        const headers = allData[0];
-        const idColumnName = actualSheetName === '_Movimentacoes' ? 'ID Mov.' : 'ID';
-        const idColumnIndex = headers.findIndex(header => header === idColumnName);
-
-        if (idColumnIndex === -1) { return res.status(500).send(`A coluna "${idColumnName}" não foi encontrada.`); }
-
         let targetRowIndex = -1;
-        for (let i = 1; i < allData.length; i++) {
-            if (allData[i][idColumnIndex] === id) {
-                targetRowIndex = i;
+        for (let i = 1; i < allRows.length; i++) {
+            if (allRows[i][idColumnIndex] == id) { // Usar '==' para comparar string com número
+                targetRowIndex = i; // Este é o índice de base 0 da linha nos dados
                 break;
             }
         }
 
-        if (targetRowIndex === -1) { return res.status(404).send(`Registo com ID "${id}" não encontrado.`); }
+        if (targetRowIndex === -1) {
+            return res.status(404).send('Registo não encontrado na planilha.');
+        }
 
-        let updatedRowValues = [];
-        let fieldsToUpdate = 'userEnteredValue,userEnteredFormat'; // Padrão mais robusto
-
-        updatedRowValues = headers.map(header => {
-            const value = updatedData[header] || '';
-            if (header === 'Valor' || header === 'Preço') {
-                const valorNumerico = value ? parseFloat(String(value).replace(',', '.')) : null;
-                return { userEnteredValue: { numberValue: valorNumerico }, userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"R$"#,##0.00' } } };
+        // 2. Montar a linha atualizada na ordem correta dos cabeçalhos
+        const updatedRowValues = headers.map(header => {
+            // Normaliza o valor do preço/valor para número
+            if ((header.toLowerCase() === 'preço' || header.toLowerCase() === 'valor') && updatedData[header]) {
+                const numericValue = parseFloat(String(updatedData[header]).replace(',', '.'));
+                return isNaN(numericValue) ? '' : numericValue;
             }
-            return { userEnteredValue: { stringValue: value.toString() } };
+            return updatedData[header] || '';
         });
 
-        await sheets.spreadsheets.batchUpdate({
+        // 3. Atualizar a linha encontrada usando o método 'update'
+        const rangeToUpdate = `${actualSheetName}!A${targetRowIndex + 1}`; // +1 para converter para a notação A1
+        
+        await sheets.spreadsheets.values.update({
             spreadsheetId: SPREADSHEET_ID,
+            range: rangeToUpdate,
+            valueInputOption: 'USER_ENTERED',
             resource: {
-                requests: [{
-                    updateCells: {
-                        start: { sheetId: parseInt(sheetId, 10), rowIndex: targetRowIndex, columnIndex: 0 },
-                        rows: [{ values: updatedRowValues }],
-                        fields: fieldsToUpdate
-                    }
-                }]
+                values: [updatedRowValues]
             }
         });
+
         res.status(200).send('Registo atualizado com sucesso!');
+
     } catch (error) {
-        console.error(`Erro ao atualizar registo na aba ${actualSheetName}:`, error.message);
-        res.status(500).send(`Erro ao atualizar registo: ${error.message}`);
+        console.error(`Erro ao atualizar registo:`, error.message);
+        res.status(500).send(`Erro no servidor ao atualizar: ${error.message}`);
     }
 });
 
