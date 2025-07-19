@@ -244,7 +244,12 @@ app.put('/api/:sheetName', verifyToken, async (req, res) => {
 
         // 2. Montar a linha atualizada na ordem correta dos cabeçalhos
         const updatedRowValues = headers.map(header => {
-            // Normaliza o valor do preço/valor para número
+            const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
+            // Se o header atual for o de ID, retorna o ID original.
+            if (header === idKey) {
+                return id;
+            }
+            // Para os outros campos, usa a lógica que já tínhamos.
             if ((header.toLowerCase() === 'preço' || header.toLowerCase() === 'valor') && updatedData[header]) {
                 const numericValue = parseFloat(String(updatedData[header]).replace(',', '.'));
                 return isNaN(numericValue) ? '' : numericValue;
