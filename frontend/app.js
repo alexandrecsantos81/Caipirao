@@ -212,10 +212,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     }
 
-    // VERSÃO FINAL E CORRIGIDA DA FUNÇÃO deleteRow
-    async function deleteRow(entity, rowData, sheetId) { // Mudança: recebemos o objeto 'rowData'
-        // Usamos o ID do objeto de dados como identificador único
-        const uniqueId = rowData['ID']; 
+    async function deleteRow(entity, rowData, sheetId) {
+        // LÓGICA CORRIGIDA PARA PEGAR O ID CORRETO
+        const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
+        const uniqueId = rowData[idKey];
+
         if (!uniqueId) {
             showNotification('Não foi possível apagar: o registo não tem um ID.', 'error');
             return;
@@ -225,25 +226,18 @@ document.addEventListener('DOMContentLoaded', () => {
         
         showLoader();
         try {
-            // Enviamos o ID como um query parameter
             const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}?id=${uniqueId}&sheetId=${sheetId}`, { 
                 method: 'DELETE',
                 headers: getAuthHeaders()
-                // O corpo (body) não é mais necessário
             });
             
             if (!response.ok) throw new Error(await response.text());
             
             showNotification('Registo apagado com sucesso!', 'success');
             
-            // Atualiza a UI de forma otimista
-            if (entity === 'clientes') {
-                fetchClientes();
-            } else if (entity === 'produtos') {
-                fetchProdutos();
-            } else if (entity === 'movimentacoes') {
-                fetchMovimentacoes();
-            }
+            if (entity === 'clientes') { fetchClientes(); } 
+            else if (entity === 'produtos') { fetchProdutos(); } 
+            else if (entity === 'movimentacoes') { fetchMovimentacoes(); }
 
         } catch (error) {
             console.error(`Erro ao apagar ${entity}:`, error);
@@ -252,6 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hideLoader();
         }
     }
+
 
 
     // VERSÃO MELHORADA DO MODAL DE EDIÇÃO
