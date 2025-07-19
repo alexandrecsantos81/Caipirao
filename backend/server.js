@@ -136,63 +136,53 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
 });
 
 
-// Rota para apagar uma linha (COM LOGS DE DEPURAÇÃO)
-app.delete('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
-    const { sheetName, rowIndex } = req.params;
-    const { sheetId } = req.query;
+    // Rota para apagar uma linha (VERSÃO FINAL - USANDO CLEAR EM VEZ DE DELETE)
+    app.delete('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
+        const { sheetName, rowIndex } = req.params;
+        const { sheetId } = req.query;
 
-    // --- INÍCIO DOS LOGS DE DEPURAÇÃO ---
-    console.log('--- TENTATIVA DE EXCLUSÃO RECEBIDA ---');
-    console.log(`Aba (sheetName): ${sheetName}`);
-    console.log(`Índice da Linha (rowIndex) recebido do frontend: ${rowIndex}`);
-    console.log(`ID da Aba (sheetId) recebido do frontend: ${sheetId}`);
-    // --- FIM DOS LOGS DE DEPURAÇÃO ---
+        // Validações (mantidas como estão)
+        if (!['movimentacoes', 'clientes', 'produtos'].includes(sheetName.toLowerCase())) {
+            return res.status(400).send('Nome da planilha inválido.');
+        }
+        if (!sheetId || sheetId === '0') {
+            return res.status(400).send('O ID da aba (sheetId) é inválido ou não foi fornecido.');
+        }
 
-    if (!['movimentacoes', 'clientes', 'produtos'].includes(sheetName.toLowerCase())) {
-        return res.status(400).send('Nome da planilha inválido.');
-    }
-    if (sheetId === undefined || sheetId === null || sheetId === '0') { // Validação melhorada
-        console.error('ERRO: sheetId inválido ou não fornecido.');
-        return res.status(400).send('O ID da aba (sheetId) é inválido ou não foi fornecido.');
-    }
+        try {
+            const sheets = google.sheets({ version: 'v4', auth });
+            
+            // Mapeia o nome da aba para o nome real usado na planilha
+            const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
+            const actualSheetName = allowedSheets[sheetName.toLowerCase()];
 
-    try {
-        const sheets = google.sheets({ version: 'v4', auth });
-        const apiStartIndex = parseInt(rowIndex, 10) + 1;
+            // Calcula a linha correta na planilha (índice do frontend + 2)
+            // +1 porque o índice do frontend é base 0
+            // +1 porque a planilha tem uma linha de cabeçalho
+            const targetRow = parseInt(rowIndex, 10) + 2;
 
-        const deleteRequest = {
-            deleteDimension: {
-                range: {
-                    sheetId: parseInt(sheetId, 10),
-                    dimension: 'ROWS',
-                    startIndex: apiStartIndex,
-                    endIndex: apiStartIndex + 1
-                }
-            }
-        };
+            // Define o range a ser limpo, ex: 'Clientes!A92:Z92'
+            // Usamos A:Z para garantir que todas as colunas da linha sejam limpas
+            const rangeToClear = `${actualSheetName}!A${targetRow}:Z${targetRow}`;
 
-        // --- LOG DO COMANDO A SER ENVIADO PARA O GOOGLE ---
-        console.log('Enviando o seguinte pedido para a API do Google:');
-        console.log(JSON.stringify(deleteRequest, null, 2)); // Imprime o objeto formatado
+            console.log(`--- TENTATIVA DE LIMPAR LINHA ---`);
+            console.log(`Range a ser limpo: ${rangeToClear}`);
 
-        await sheets.spreadsheets.batchUpdate({
-            spreadsheetId: SPREADSHEET_ID,
-            resource: {
-                requests: [deleteRequest]
-            }
-        });
+            // Usa o método 'spreadsheets.values.clear', que é mais robusto
+            await sheets.spreadsheets.values.clear({
+                spreadsheetId: SPREADSHEET_ID,
+                range: rangeToClear,
+            });
 
-        console.log('SUCESSO: Linha apagada com sucesso na API do Google.');
-        res.status(200).send(`Linha ${rowIndex} apagada com sucesso.`);
+            console.log(`SUCESSO: Range ${rangeToClear} limpo na API do Google.`);
+            res.status(200).send(`Linha ${rowIndex} limpa com sucesso.`);
 
-    } catch (error) {
-        // --- LOG DO ERRO DA API DO GOOGLE ---
-        console.error('!!! ERRO DA API DO GOOGLE AO TENTAR APAGAR !!!');
-        console.error(error.message);
-        console.error('Detalhes do erro:', JSON.stringify(error.errors, null, 2));
-        res.status(500).send(`Erro no servidor ao apagar a linha: ${error.message}`);
-    }
-});
+        } catch (error) {
+            console.error('!!! ERRO DA API DO GOOGLE AO TENTAR LIMPAR A LINHA !!!');
+            console.error(error.message);
+            res.status(500).send(`Erro no servidor ao limpar a linha: ${error.message}`);
+        }
+    });
 
 
 // Rota para atualizar (editar) uma linha
