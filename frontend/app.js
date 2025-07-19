@@ -40,6 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelEditBtn = document.getElementById('cancel-edit-btn');
     let currentEditInfo = {};
     let allMovimentacoes = [];
+    let allClientes = [];
+    let allProdutos = [];
 
     // --- LÓGICA DE NOTIFICAÇÃO (TOAST) ---
     const notificationContainer = document.getElementById('notification-container');
@@ -187,11 +189,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await response.json();
         const formattedData = formatData(data);
 
+        // Bloco novo e corrigido
         if (entity === 'movimentacoes') {
-        allMovimentacoes = formattedData;
-        if (document.getElementById('page-dashboard').classList.contains('active')) {
-            updateDashboard(formattedData);
-        }
+            allMovimentacoes = formattedData;
+            if (document.getElementById('page-dashboard').classList.contains('active')) {
+                updateDashboard(formattedData);
+            }
+        } else if (entity === 'clientes') {
+            allClientes = formattedData;
+        } else if (entity === 'produtos') {
+            allProdutos = formattedData;
         }
 
         createTable(container, formattedData, entity, sheetId);
@@ -205,27 +212,46 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     }
 
+    // VERSÃO FINAL E CORRIGIDA DA FUNÇÃO deleteRow
     async function deleteRow(entity, rowIndex, sheetId) {
         if (!confirm('Tem a certeza de que quer apagar esta linha?')) return;
         showLoader();
+
         try {
+            // O índice para a API do Google é o índice visual + 1 (por causa do cabeçalho)
             const apiRowIndex = rowIndex + 1;
-            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}/${apiRowIndex}?sheetId=${sheetId}`, { 
+            
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}/${apiRowIndex}?sheetId=${sheetId}`, {
                 method: 'DELETE',
                 headers: getAuthHeaders()
             });
-            
-            if (!response.ok) throw new Error(await response.text());
-            
-            showNotification('Registo apagado com sucesso!', 'success');
-            const table = document.querySelector(`#page-${entity} table`);
-            if (table && table.rows.length > rowIndex + 1) { // +1 por causa do cabeçalho
-                // A linha a ser removida é rowIndex + 1 porque table.rows inclui o <thead>
-                table.deleteRow(rowIndex + 1); 
-            } else {
-                // Se não conseguir remover a linha, recarrega a página como fallback
-                showPage(entity);
+
+            if (!response.ok) {
+                // Se a API falhar, lança um erro para ser pego pelo catch
+                throw new Error(await response.text());
             }
+
+            // Se a API teve sucesso, atualizamos o estado local e a UI
+            showNotification('Registo apagado com sucesso!', 'success');
+
+            // 1. Atualiza o array de dados local
+            if (entity === 'clientes') {
+                allClientes.splice(rowIndex, 1); // Remove 1 item no índice 'rowIndex'
+            } else if (entity === 'produtos') {
+                allProdutos.splice(rowIndex, 1);
+            } else if (entity === 'movimentacoes') {
+                // Para movimentações, a lógica é mais complexa por causa da busca
+                // A maneira mais segura é recarregar os dados
+                fetchMovimentacoes();
+                return; // Sai da função para evitar a remoção manual da linha
+            }
+
+            // 2. Atualiza a UI (tabela HTML)
+            const table = document.querySelector(`#page-${entity} table`);
+            if (table && table.rows.length > rowIndex + 1) {
+                table.deleteRow(rowIndex + 1);
+            }
+
         } catch (error) {
             console.error(`Erro ao apagar ${entity}:`, error);
             showNotification(`Falha ao apagar: ${error.message}`, 'error');
