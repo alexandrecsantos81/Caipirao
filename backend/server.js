@@ -202,78 +202,78 @@ app.delete('/api/:sheetName', verifyToken, async (req, res) => {
 });
 
 
-// VERSÃO FINAL E CORRIGIDA DA ROTA DE ATUALIZAÇÃO (PUT)
-app.put('/api/:sheetName', verifyToken, async (req, res) => {
-    const { sheetName } = req.params; // Usaremos esta variável
-    const updatedData = req.body;
-    const { id } = updatedData;
+    // VERSÃO COM COMPARAÇÃO INSENSÍVEL A MAIÚSCULAS/MINÚSCULAS
+    app.put('/api/:sheetName', verifyToken, async (req, res) => {
+        const { sheetName } = req.params;
+        const updatedData = req.body;
+        const { id } = updatedData;
 
-    if (!id) {
-        return res.status(400).send('Erro: O ID do registo é obrigatório para a edição.');
-    }
-    const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
-    const actualSheetName = allowedSheets[sheetName.toLowerCase()];
-    if (!actualSheetName) {
-        return res.status(400).send('Nome da planilha inválido.');
-    }
-
-    try {
-        const sheets = google.sheets({ version: 'v4', auth });
-
-        const getResponse = await sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID,
-            range: actualSheetName,
-        });
-        const allRows = getResponse.data.values || [];
-        const headers = allRows[0];
-        
-        // CORREÇÃO: Usa 'sheetName' em vez de 'entity'
-        const idKey = sheetName === 'movimentacoes' ? 'ID Mov.' : 'ID';
-        
-        const idColumnIndex = headers.findIndex(header => header === idKey);
-        
-        let targetRowIndex = -1;
-        for (let i = 1; i < allRows.length; i++) {
-            if (allRows[i][idColumnIndex] == id) {
-                targetRowIndex = i;
-                break;
-            }
+        if (!id) {
+            return res.status(400).send('Erro: O ID do registo é obrigatório para a edição.');
+        }
+        const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
+        const actualSheetName = allowedSheets[sheetName.toLowerCase()];
+        if (!actualSheetName) {
+            return res.status(400).send('Nome da planilha inválido.');
         }
 
-        if (targetRowIndex === -1) {
-            return res.status(404).send('Registo não encontrado na planilha.');
+        try {
+            const sheets = google.sheets({ version: 'v4', auth });
+
+            const getResponse = await sheets.spreadsheets.values.get({
+                spreadsheetId: SPREADSHEET_ID,
+                range: actualSheetName,
+            });
+            const allRows = getResponse.data.values || [];
+            const headers = allRows[0];
+            
+            const idKey = sheetName === 'movimentacoes' ? 'ID Mov.' : 'ID';
+            
+            const idColumnIndex = headers.findIndex(header => header.toLowerCase() === idKey.toLowerCase());
+            
+            let targetRowIndex = -1;
+            for (let i = 1; i < allRows.length; i++) {
+                if (allRows[i][idColumnIndex] == id) {
+                    targetRowIndex = i;
+                    break;
+                }
+            }
+
+            if (targetRowIndex === -1) {
+                return res.status(404).send('Registo não encontrado na planilha.');
+            }
+
+            const updatedRowValues = headers.map(header => {
+                if (header.toLowerCase() === idKey.toLowerCase()) {
+                    return id;
+                }
+                if ((header.toLowerCase() === 'preço' || header.toLowerCase() === 'valor') && updatedData[header]) {
+                    const numericValue = parseFloat(String(updatedData[header]).replace(',', '.'));
+                    return isNaN(numericValue) ? '' : numericValue;
+                }
+                // Procura a chave correspondente em updatedData ignorando maiúsculas/minúsculas
+                const dataKey = Object.keys(updatedData).find(k => k.toLowerCase() === header.toLowerCase());
+                return dataKey ? updatedData[dataKey] : '';
+            });
+
+            const rangeToUpdate = `${actualSheetName}!A${targetRowIndex + 1}`;
+            
+            await sheets.spreadsheets.values.update({
+                spreadsheetId: SPREADSHEET_ID,
+                range: rangeToUpdate,
+                valueInputOption: 'USER_ENTERED',
+                resource: {
+                    values: [updatedRowValues]
+                }
+            });
+
+            res.status(200).send('Registo atualizado com sucesso!');
+
+        } catch (error) {
+            console.error(`Erro ao atualizar registo:`, error.message);
+            res.status(500).send(`Erro no servidor ao atualizar: ${error.message}`);
         }
-
-        // Monta a linha atualizada, garantindo que o ID original seja mantido.
-        const updatedRowValues = headers.map(header => {
-            if (header === idKey) {
-                return id; // Preserva o ID original
-            }
-            if ((header.toLowerCase() === 'preço' || header.toLowerCase() === 'valor') && updatedData[header]) {
-                const numericValue = parseFloat(String(updatedData[header]).replace(',', '.'));
-                return isNaN(numericValue) ? '' : numericValue;
-            }
-            return updatedData[header] || '';
-        });
-
-        const rangeToUpdate = `${actualSheetName}!A${targetRowIndex + 1}`;
-        
-        await sheets.spreadsheets.values.update({
-            spreadsheetId: SPREADSHEET_ID,
-            range: rangeToUpdate,
-            valueInputOption: 'USER_ENTERED',
-            resource: {
-                values: [updatedRowValues]
-            }
-        });
-
-        res.status(200).send('Registo atualizado com sucesso!');
-
-    } catch (error) {
-        console.error(`Erro ao atualizar registo:`, error.message);
-        res.status(500).send(`Erro no servidor ao atualizar: ${error.message}`);
-    }
-});
+    });
 
 // --- ROTAS DE AUTENTICAÇÃO ---
 

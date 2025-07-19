@@ -503,12 +503,20 @@ document.addEventListener('DOMContentLoaded', () => {
     clienteForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'clientes', clienteForm, fetchClientes));
     movimentacaoForm.addEventListener('submit', (e) => handleAddFormSubmit(e, 'movimentacoes', movimentacaoForm, fetchMovimentacoes));
 
+    // VERSÃO COM CONVERSÃO PARA MAIÚSCULAS
     async function handleAddFormSubmit(event, entity, form, fetchFunction) {
         event.preventDefault();
         showLoader();
         
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
+
+        // Converte todos os valores de string para maiúsculas antes de enviar
+        for (const key in data) {
+            if (typeof data[key] === 'string') {
+                data[key] = data[key].toUpperCase();
+            }
+        }
         
         try {
             const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}`, {
