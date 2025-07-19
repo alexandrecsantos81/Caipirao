@@ -254,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // --- LÓGICA DO MODAL DE EDIÇÃO ---
+    // VERSÃO MELHORADA DO MODAL DE EDIÇÃO
     function openEditModal(entity, rowIndex, data, sheetId) {
         currentEditInfo = { entity, rowIndex, sheetId };
         editFormFields.innerHTML = '';
@@ -269,10 +269,25 @@ document.addEventListener('DOMContentLoaded', () => {
             label.textContent = key;
             
             const input = document.createElement('input');
-            input.type = 'text';
+            let currentValue = data[key];
+
+            // Lógica especial para campos de preço/valor
+            if (key.toLowerCase() === 'preço' || key.toLowerCase() === 'valor') {
+                // Remove o "R$" e outros caracteres não numéricos, troca vírgula por ponto
+                currentValue = String(currentValue)
+                    .replace(/[^0-9,.]/g, '') // Remove tudo que não for número, vírgula ou ponto
+                    .replace(',', '.');      // Garante que o separador seja ponto
+                
+                input.type = 'text';
+                input.inputMode = 'decimal';
+                input.pattern = "[0-9]*[.,]?[0-9]+";
+            } else {
+                input.type = 'text';
+            }
+            
             input.id = `edit-${key}`;
             input.name = key;
-            input.value = data[key];
+            input.value = currentValue;
             input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm';
             
             fieldWrapper.appendChild(label);
