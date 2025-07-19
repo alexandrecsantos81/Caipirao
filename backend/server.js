@@ -134,42 +134,64 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
 });
 
 
-// Rota para apagar uma linha
+// Rota para apagar uma linha (COM LOGS DE DEPURAÇÃO)
 app.delete('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
     const { sheetName, rowIndex } = req.params;
     const { sheetId } = req.query;
 
+    // --- INÍCIO DOS LOGS DE DEPURAÇÃO ---
+    console.log('--- TENTATIVA DE EXCLUSÃO RECEBIDA ---');
+    console.log(`Aba (sheetName): ${sheetName}`);
+    console.log(`Índice da Linha (rowIndex) recebido do frontend: ${rowIndex}`);
+    console.log(`ID da Aba (sheetId) recebido do frontend: ${sheetId}`);
+    // --- FIM DOS LOGS DE DEPURAÇÃO ---
+
     if (!['movimentacoes', 'clientes', 'produtos'].includes(sheetName.toLowerCase())) {
         return res.status(400).send('Nome da planilha inválido.');
     }
-    if (sheetId === undefined) {
-        return res.status(400).send('O ID da aba (sheetId) é necessário.');
+    if (sheetId === undefined || sheetId === null || sheetId === '0') { // Validação melhorada
+        console.error('ERRO: sheetId inválido ou não fornecido.');
+        return res.status(400).send('O ID da aba (sheetId) é inválido ou não foi fornecido.');
     }
 
     try {
         const sheets = google.sheets({ version: 'v4', auth });
         const apiStartIndex = parseInt(rowIndex, 10) + 1;
+
+        const deleteRequest = {
+            deleteDimension: {
+                range: {
+                    sheetId: parseInt(sheetId, 10),
+                    dimension: 'ROWS',
+                    startIndex: apiStartIndex,
+                    endIndex: apiStartIndex + 1
+                }
+            }
+        };
+
+        // --- LOG DO COMANDO A SER ENVIADO PARA O GOOGLE ---
+        console.log('Enviando o seguinte pedido para a API do Google:');
+        console.log(JSON.stringify(deleteRequest, null, 2)); // Imprime o objeto formatado
+
         await sheets.spreadsheets.batchUpdate({
             spreadsheetId: SPREADSHEET_ID,
             resource: {
-                requests: [{
-                    deleteDimension: {
-                        range: {
-                            sheetId: parseInt(sheetId, 10),
-                            dimension: 'ROWS',
-                            startIndex: apiStartIndex,
-                            endIndex: apiStartIndex + 1
-                        }
-                    }
-                }]
+                requests: [deleteRequest]
             }
         });
+
+        console.log('SUCESSO: Linha apagada com sucesso na API do Google.');
         res.status(200).send(`Linha ${rowIndex} apagada com sucesso.`);
+
     } catch (error) {
-        console.error(`Erro ao apagar linha da aba ${sheetName}:`, error.message);
+        // --- LOG DO ERRO DA API DO GOOGLE ---
+        console.error('!!! ERRO DA API DO GOOGLE AO TENTAR APAGAR !!!');
+        console.error(error.message);
+        console.error('Detalhes do erro:', JSON.stringify(error.errors, null, 2));
         res.status(500).send(`Erro no servidor ao apagar a linha: ${error.message}`);
     }
 });
+
 
 // Rota para atualizar (editar) uma linha
 app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
