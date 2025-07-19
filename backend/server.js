@@ -75,7 +75,7 @@ app.get('/api/:sheetName', verifyToken, async (req, res) => {
     }
 });
 
-// Rota para adicionar dados a uma aba
+// Rota para adicionar dados a uma aba (VERSÃO CORRIGIDA)
 app.post('/api/:sheetName', verifyToken, async (req, res) => {
     let { sheetName } = req.params;
     const data = req.body;
@@ -88,12 +88,35 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
 
     try {
         const sheets = google.sheets({ version: 'v4', auth });
-        const headerResponse = await sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID,
-            range: `${actualSheetName}!1:1`,
-        });
-        const headers = headerResponse.data.values[0];
-        const newRow = headers.map(header => data[header] || '');
+        let newRow = [];
+
+        // Lógica específica para cada aba para garantir a ordem correta dos dados
+        if (actualSheetName === 'Clientes') {
+            newRow = [
+                data['ID'] || '',
+                data['Nome'] || '',
+                data['Contato'] || '',
+                data['Endereço'] || ''
+            ];
+        } else if (actualSheetName === 'Produtos') {
+            newRow = [
+                data['ID'] || '',
+                data['Nome'] || '',
+                data['Descrição'] || '',
+                data['Preço'] || ''
+            ];
+        } else if (actualSheetName === '_Movimentacoes') {
+            // Pega os cabeçalhos dinamicamente para movimentações, pois são muitos campos
+            const headerResponse = await sheets.spreadsheets.values.get({
+                spreadsheetId: SPREADSHEET_ID,
+                range: `${actualSheetName}!1:1`,
+            });
+            const headers = headerResponse.data.values[0];
+            newRow = headers.map(header => data[header] || '');
+        } else {
+            // Se for uma aba desconhecida, retorna um erro
+            return res.status(400).send('Tipo de entidade não suportado para adição.');
+        }
 
         await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
@@ -101,12 +124,15 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
             valueInputOption: 'USER_ENTERED',
             resource: { values: [newRow] },
         });
+
         res.status(201).send('Dados adicionados com sucesso!');
+
     } catch (error) {
         console.error(`Erro ao adicionar dados na aba ${actualSheetName}:`, error.message);
         res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
     }
 });
+
 
 // Rota para apagar uma linha
 app.delete('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
