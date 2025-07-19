@@ -40,16 +40,21 @@ app.use(express.json());
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
 console.log('--- DIAGNÓSTICO: SPREADSHEET_ID a ser usado:', SPREADSHEET_ID, '---');
 
-const creds = process.env.GOOGLE_CREDS_V2 ?
-    JSON.parse(process.env.GOOGLE_CREDS_V2) :
-    require(path.join(__dirname, 'data/credenciais.json'));
+// --- NOVA CONFIGURAÇÃO DE AUTENTICAÇÃO OAUTH 2.0 ---
+const { OAuth2 } = google.auth;
+const oauth2Client = new OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    "https://developers.google.com/oauthplayground" // Redirect URL
+ );
 
-const auth = new google.auth.GoogleAuth({
-    credentials: creds,
-    // LINHA NOVA E MAIS EXPLÍCITA
-    scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/drive.file'],
+oauth2Client.setCredentials({
+    refresh_token: process.env.GOOGLE_REFRESH_TOKEN
+});
 
-} );
+// O 'auth' a ser usado nas chamadas da API agora é o oauth2Client
+const auth = oauth2Client;
+// --- FIM DA NOVA CONFIGURAÇÃO ---
 
 // --- ROTAS DA API (Dados) ---
 
