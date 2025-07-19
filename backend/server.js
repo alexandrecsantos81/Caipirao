@@ -141,10 +141,10 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
 });
 
 
-// Rota para apagar uma linha (VERSÃO FINAL E ROBUSTA - USANDO ID)
+// Rota para apagar uma linha (VERSÃO FINALÍSSIMA - DELETANDO A LINHA FÍSICA)
 app.delete('/api/:sheetName', verifyToken, async (req, res) => {
     const { sheetName } = req.params;
-    const { id, sheetId } = req.query; // Pegamos o ID dos query params
+    const { id, sheetId } = req.query;
 
     // Validações
     if (!['movimentacoes', 'clientes', 'produtos'].includes(sheetName.toLowerCase())) {
@@ -152,6 +152,9 @@ app.delete('/api/:sheetName', verifyToken, async (req, res) => {
     }
     if (!id) {
         return res.status(400).send('O ID do registo é obrigatório para a exclusão.');
+    }
+    if (!sheetId) {
+        return res.status(400).send('O ID da aba (sheetId) é obrigatório.');
     }
 
     try {
@@ -174,9 +177,9 @@ app.delete('/api/:sheetName', verifyToken, async (req, res) => {
 
         // 2. ENCONTRAR A LINHA FÍSICA QUE CORRESPONDE AO ID
         let targetRowIndex = -1;
-        for (let i = 1; i < allData.length; i++) { // Começa em 1 para pular o cabeçalho
+        for (let i = 1; i < allData.length; i++) {
             if (allData[i][idColumnIndex] === id) {
-                targetRowIndex = i; // Encontramos o índice físico (base 0)
+                targetRowIndex = i;
                 break;
             }
         }
@@ -185,25 +188,33 @@ app.delete('/api/:sheetName', verifyToken, async (req, res) => {
             return res.status(404).send(`Registo com ID "${id}" não encontrado.`);
         }
 
-        // 3. LIMPAR A LINHA CORRETA
-        const targetRow = targetRowIndex + 1; // Converte para o número da linha (base 1)
-        const rangeToClear = `${actualSheetName}!A${targetRow}:Z${targetRow}`;
+        // 3. DELETAR A LINHA FÍSICA USANDO BATCHUPDATE
+        console.log(`--- TENTATIVA DE DELETAR LINHA FÍSICA POR ID ---`);
+        console.log(`ID a ser apagado: ${id}. Índice físico encontrado: ${targetRowIndex}.`);
 
-        console.log(`--- TENTATIVA DE LIMPAR LINHA POR ID ---`);
-        console.log(`ID a ser apagado: ${id}. Linha física encontrada: ${targetRow}. Range: ${rangeToClear}`);
-
-        await sheets.spreadsheets.values.clear({
+        await sheets.spreadsheets.batchUpdate({
             spreadsheetId: SPREADSHEET_ID,
-            range: rangeToClear,
+            resource: {
+                requests: [{
+                    deleteDimension: {
+                        range: {
+                            sheetId: parseInt(sheetId, 10),
+                            dimension: 'ROWS',
+                            startIndex: targetRowIndex, // Usamos o índice físico (base 0)
+                            endIndex: targetRowIndex + 1
+                        }
+                    }
+                }]
+            }
         });
 
-        console.log(`SUCESSO: Range ${rangeToClear} limpo na API do Google.`);
-        res.status(200).send(`Registo com ID ${id} limpo com sucesso.`);
+        console.log(`SUCESSO: Linha física ${targetRowIndex} deletada na API do Google.`);
+        res.status(200).send(`Registo com ID ${id} deletado com sucesso.`);
 
     } catch (error) {
-        console.error('!!! ERRO DA API DO GOOGLE AO TENTAR LIMPAR A LINHA POR ID !!!');
+        console.error('!!! ERRO DA API DO GOOGLE AO TENTAR DELETAR A LINHA FÍSICA !!!');
         console.error(error.message);
-        res.status(500).send(`Erro no servidor ao limpar a linha: ${error.message}`);
+        res.status(500).send(`Erro no servidor ao deletar a linha: ${error.message}`);
     }
 });
 
