@@ -155,31 +155,31 @@
                     <section class="mb-8">
                         <h2 class="text-2xl font-semibold mb-4">Adicionar Novo Produto</h2>
                         <!-- ======================= FORMULÁRIO DE PRODUTOS CORRIGIDO ======================= -->
-                        <form id="add-produto-form" class="bg-white p-6 rounded-lg shadow grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Verifique se o seu formulário de produtos está exatamente assim -->
+                        <form id="add-produto-form" class="space-y-4">
+                            <!-- Seus campos de input para ID, Nome, Descrição, Preço -->
                             <div>
-                                <label for="produto-id" class="block text-sm font-medium text-slate-700">ID Produto</label>
-                                <input type="text" id="produto-id" name="ID" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase-input" placeholder="Ex: P01">
+                                <label for="add-produto-id" class="block text-sm font-medium text-gray-700">ID</label>
+                                <input type="text" name="ID" id="add-produto-id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                             </div>
                             <div>
-                                <label for="produto-nome" class="block text-sm font-medium text-slate-700">Nome do Produto</label>
-                                <input type="text" id="produto-nome" name="Nome" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase-input" placeholder="Ex: Frango Inteiro">
+                                <label for="add-produto-nome" class="block text-sm font-medium text-gray-700">Nome</label>
+                                <input type="text" name="Nome" id="add-produto-nome" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                             </div>
-                            <div class="md:col-span-2">
-                                <label for="produto-descricao" class="block text-sm font-medium text-slate-700">Descrição</label>
-                                <input type="text" id="produto-descricao" name="Descrição" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase-input" placeholder="Ex: Frango resfriado, aprox. 2kg">
-                            </div>
-                            <!-- MUDANÇA NO FORMULÁRIO DE PRODUTOS -->
                             <div>
-                                <label for="produto-preco" class="block text-sm font-medium text-slate-700">Preço</label>
-                                <!-- Mudanças: type="text", inputmode="decimal", pattern -->
-                                <input type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]+" id="produto-preco" name="Preço" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase-input" placeholder="Ex: 25,50">
+                                <label for="add-produto-descricao" class="block text-sm font-medium text-gray-700">Descrição</label>
+                                <input type="text" name="Descrição" id="add-produto-descricao" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                             </div>
-                            <div class="md:col-span-2 flex items-start">
-                                <button type="submit" class="mt-4 w-full lg:w-auto bg-blue-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    Adicionar Produto
-                                </button>
+                            <div>
+                                <label for="add-produto-preco" class="block text-sm font-medium text-gray-700">Preço</label>
+                                <input type="text" name="Preço" id="add-produto-preco" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                             </div>
+                            
+                            <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Adicionar Produto
+                            </button>
                         </form>
+
                     </section>
                     <section>
                         <h2 class="text-2xl font-semibold mb-4">Lista de Produtos</h2>
