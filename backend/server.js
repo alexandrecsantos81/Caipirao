@@ -202,13 +202,12 @@ app.delete('/api/:sheetName', verifyToken, async (req, res) => {
 });
 
 
-// VERSÃO FINAL DA ROTA DE ATUALIZAÇÃO (PUT)
+// VERSÃO FINAL E CORRIGIDA DA ROTA DE ATUALIZAÇÃO (PUT)
 app.put('/api/:sheetName', verifyToken, async (req, res) => {
-    const { sheetName } = req.params;
+    const { sheetName } = req.params; // Usaremos esta variável
     const updatedData = req.body;
-    const { id } = updatedData; // Pega o ID de dentro do corpo da requisição
+    const { id } = updatedData;
 
-    // Validações
     if (!id) {
         return res.status(400).send('Erro: O ID do registo é obrigatório para a edição.');
     }
@@ -221,19 +220,22 @@ app.put('/api/:sheetName', verifyToken, async (req, res) => {
     try {
         const sheets = google.sheets({ version: 'v4', auth });
 
-        // 1. Encontrar a linha física do registo pelo ID
         const getResponse = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
             range: actualSheetName,
         });
         const allRows = getResponse.data.values || [];
         const headers = allRows[0];
-        const idColumnIndex = headers.findIndex(header => header === 'ID' || header === 'ID Mov.');
+        
+        // CORREÇÃO: Usa 'sheetName' em vez de 'entity'
+        const idKey = sheetName === 'movimentacoes' ? 'ID Mov.' : 'ID';
+        
+        const idColumnIndex = headers.findIndex(header => header === idKey);
         
         let targetRowIndex = -1;
         for (let i = 1; i < allRows.length; i++) {
-            if (allRows[i][idColumnIndex] == id) { // Usar '==' para comparar string com número
-                targetRowIndex = i; // Este é o índice de base 0 da linha nos dados
+            if (allRows[i][idColumnIndex] == id) {
+                targetRowIndex = i;
                 break;
             }
         }
@@ -242,14 +244,11 @@ app.put('/api/:sheetName', verifyToken, async (req, res) => {
             return res.status(404).send('Registo não encontrado na planilha.');
         }
 
-        // 2. Montar a linha atualizada na ordem correta dos cabeçalhos
+        // Monta a linha atualizada, garantindo que o ID original seja mantido.
         const updatedRowValues = headers.map(header => {
-            const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
-            // Se o header atual for o de ID, retorna o ID original.
             if (header === idKey) {
-                return id;
+                return id; // Preserva o ID original
             }
-            // Para os outros campos, usa a lógica que já tínhamos.
             if ((header.toLowerCase() === 'preço' || header.toLowerCase() === 'valor') && updatedData[header]) {
                 const numericValue = parseFloat(String(updatedData[header]).replace(',', '.'));
                 return isNaN(numericValue) ? '' : numericValue;
@@ -257,8 +256,7 @@ app.put('/api/:sheetName', verifyToken, async (req, res) => {
             return updatedData[header] || '';
         });
 
-        // 3. Atualizar a linha encontrada usando o método 'update'
-        const rangeToUpdate = `${actualSheetName}!A${targetRowIndex + 1}`; // +1 para converter para a notação A1
+        const rangeToUpdate = `${actualSheetName}!A${targetRowIndex + 1}`;
         
         await sheets.spreadsheets.values.update({
             spreadsheetId: SPREADSHEET_ID,
@@ -276,9 +274,6 @@ app.put('/api/:sheetName', verifyToken, async (req, res) => {
         res.status(500).send(`Erro no servidor ao atualizar: ${error.message}`);
     }
 });
-
-
-
 
 // --- ROTAS DE AUTENTICAÇÃO ---
 
