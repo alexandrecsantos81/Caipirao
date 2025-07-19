@@ -6,8 +6,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // URL da API do Backend
-    const API_BASE_URL = 'https://api-caipirao-maurizzio-procopio.onrender.com';
+    // ======================= CONFIGURAÇÃO CENTRALIZADA =======================
+    const CONFIG = {
+        API_BASE_URL: 'https://api-caipirao-maurizzio-procopio.onrender.com',
+        SHEET_IDS: {
+            movimentacoes: 1381900325,
+            clientes: 1386962696,      // SUBSTITUA PELO ID CORRETO DA ABA 'Clientes'
+            produtos: 18808149       // SUBSTITUA PELO ID CORRETO DA ABA 'Produtos'
+        }
+    };
+    // =======================================================================
 
     // --- FUNÇÃO AUXILIAR PARA CABEÇALHOS DE AUTENTICAÇÃO ---
     function getAuthHeaders() {
@@ -140,23 +148,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const produtosContainer = document.getElementById('produtos-container');
 
     function fetchMovimentacoes() {
-        // O ID da aba (sheetId) para _Movimentacoes é 1381900325 (conforme seu código)
-        fetchData('movimentacoes', movimentacoesContainer, 1381900325);
+        fetchData('movimentacoes', movimentacoesContainer, CONFIG.SHEET_IDS.movimentacoes);
     }
 
     function fetchClientes() {
-        // Você precisará encontrar o sheetId para Clientes
-        // Exemplo: fetchData('clientes', clientesContainer, SEU_SHEET_ID_CLIENTES);
-        // Por enquanto, vamos deixar sem o ID para ver se funciona
-        fetchData('clientes', clientesContainer, 1386962696); // Use 0 ou o ID correto
+        fetchData('clientes', clientesContainer, CONFIG.SHEET_IDS.clientes);
     }
 
     function fetchProdutos() {
-        // Você precisará encontrar o sheetId para Produtos
-        // Exemplo: fetchData('produtos', produtosContainer, SEU_SHEET_ID_PRODUTOS);
-        // Por enquanto, vamos deixar sem o ID para ver se funciona
-        fetchData('produtos', produtosContainer, 18808149); // Use 0 ou o ID correto
+        fetchData('produtos', produtosContainer, CONFIG.SHEET_IDS.produtos);
     }
+
 
     // --- FUNÇÕES CRUD (Create, Read, Update, Delete) ---
     async function fetchData(entity, container, sheetId) {
@@ -167,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 10000); // Timeout de 10 segundos
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/${entity}`, {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}`, {
         headers: getAuthHeaders()
         });
 
@@ -208,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoader();
         try {
             const apiRowIndex = rowIndex + 1;
-            const response = await fetch(`${API_BASE_URL}/api/${entity}/${apiRowIndex}`, { 
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}/${apiRowIndex}`, { 
                 method: 'DELETE',
                 headers: getAuthHeaders(),
                 body: JSON.stringify({ sheetId })
@@ -278,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updatedData.sheetId = sheetId;
         
         try {
-            const response = await fetch(`${API_BASE_URL}/api/${entity}/${rowIndex}`, {
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}/${rowIndex}`, {
                 method: 'PUT',
                 headers: getAuthHeaders(),
                 body: JSON.stringify(updatedData)
@@ -402,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = Object.fromEntries(formData.entries());
         
         try {
-            const response = await fetch(`${API_BASE_URL}/api/${entity}`, {
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
                 body: JSON.stringify(data)
