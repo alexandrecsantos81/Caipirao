@@ -297,7 +297,7 @@ function verifyToken(req, res, next) {
     });
 }
 
-// VERSÃO FINAL E CORRIGIDA DA ROTA DE ADIÇÃO (POST)
+// VERSÃO FINAL, EXPLÍCITA E PADRONIZADA DA ROTA DE ADIÇÃO (POST)
 app.post('/api/:sheetName', verifyToken, async (req, res) => {
     const { sheetName } = req.params;
     const data = req.body;
@@ -310,23 +310,40 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
 
     try {
         const sheets = google.sheets({ version: 'v4', auth });
-        
-        const headerResponse = await sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID,
-            range: `${actualSheetName}!1:1`,
-        });
-        const headers = headerResponse.data.values[0];
+        let newRow = [];
 
-        const newRow = headers.map(header => {
-            const dataKey = Object.keys(data).find(k => k.toLowerCase() === header.toLowerCase());
-            const value = dataKey ? data[dataKey] : '';
-
-            if ((header.toLowerCase() === 'preço' || header.toLowerCase() === 'valor') && value) {
-                const numericValue = parseFloat(String(value).replace(',', '.'));
-                return isNaN(numericValue) ? '' : numericValue;
-            }
-            return value;
-        });
+        // Lógica explícita para cada entidade, garantindo a ordem da planilha
+        if (actualSheetName === 'Clientes') {
+            // A ordem aqui deve ser ID, Nome, Contato, Endereço
+            newRow = [
+                data.ID || '',
+                data.Nome || '',
+                data.Contato || '',
+                data.Endereço || ''
+            ];
+        } else if (actualSheetName === 'Produtos') {
+            // A ordem aqui deve ser ID, Nome, Descrição, Preço
+            newRow = [
+                data.id || '', // Usa a chave 'id' do formulário
+                data.nome || '', // Usa a chave 'nome' do formulário
+                data.descricao || '', // Usa a chave 'descricao' do formulário
+                data.preco ? parseFloat(String(data.preco).replace(',', '.')) : ''
+            ];
+        } else if (actualSheetName === '_Movimentacoes') {
+            // A ordem aqui deve ser ID Mov., Data, Tipo, Categoria, etc.
+            newRow = [
+                data.id_mov || '',
+                data.data || '',
+                data.tipo || '',
+                data.categoria || '',
+                data.descricao || '',
+                data.valor ? parseFloat(String(data.valor).replace(',', '.')) : '',
+                data.responsavel || '',
+                data.observacoes || ''
+            ];
+        } else {
+            return res.status(400).send('Tipo de entidade não suportado para adição.');
+        }
 
         await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
@@ -342,6 +359,7 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
         res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
     }
 });
+
 
 
 // Rota para fazer login de um utilizador
