@@ -249,12 +249,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-    // VERSÃO FINAL E CORRIGIDA DE openEditModal
+    // VERSÃO COM DROPDOWN NO MODAL
     function openEditModal(entity, rowData, sheetId) {
         const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
         const idValue = rowData[idKey];
 
-        // VALIDAÇÃO CRÍTICA: Se o ID não existir, não abre o modal.
         if (!idValue) {
             showNotification('Não é possível editar um registo sem ID.', 'error');
             console.error("Tentativa de abrir modal de edição para um registo sem ID:", rowData);
@@ -278,22 +277,48 @@ document.addEventListener('DOMContentLoaded', () => {
             label.className = 'block text-sm font-medium text-slate-700';
             label.textContent = key;
             
-            const input = document.createElement('input');
-            let currentValue = rowData[key];
+            let input; // Declara a variável do campo aqui
 
-            if (key.toLowerCase() === 'preço' || key.toLowerCase() === 'valor') {
-                currentValue = String(currentValue).replace(/[^0-9,.]/g, '').replace(',', '.');
-                input.type = 'text';
-                input.inputMode = 'decimal';
-                input.pattern = "[0-9]*[.,]?[0-9]+";
+            // ======================= NOVA LÓGICA =======================
+            if (key === 'Tipo (Entrada/Saída)') {
+                input = document.createElement('select');
+                input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm';
+                
+                const optionEntrada = document.createElement('option');
+                optionEntrada.value = 'Entrada';
+                optionEntrada.textContent = 'Entrada';
+                
+                const optionSaida = document.createElement('option');
+                optionSaida.value = 'Saída';
+                optionSaida.textContent = 'Saída';
+                
+                input.appendChild(optionEntrada);
+                input.appendChild(optionSaida);
+                
+                // Define a opção selecionada com base no valor atual
+                input.value = rowData[key];
+
             } else {
-                input.type = 'text';
+                // Lógica antiga para todos os outros campos
+                input = document.createElement('input');
+                let currentValue = rowData[key];
+
+                if (key.toLowerCase() === 'preço' || key.toLowerCase() === 'valor') {
+                    currentValue = String(currentValue).replace(/[^0-9,.]/g, '').replace(',', '.');
+                    input.type = 'text';
+                    input.inputMode = 'decimal';
+                    input.pattern = "[0-9]*[.,]?[0-9]+";
+                } else {
+                    input.type = 'text';
+                }
+                
+                input.value = currentValue;
+                input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm';
             }
-            
+            // ===========================================================
+
             input.id = `edit-${key}`;
             input.name = key;
-            input.value = currentValue;
-            input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm';
             
             if (key === idKey) {
                 input.disabled = true;
@@ -309,6 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modalBackdrop.classList.add('flex');
         setTimeout(() => modal.classList.remove('-translate-y-full'), 50);
     }
+
 
 
 
