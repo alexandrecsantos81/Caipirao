@@ -297,16 +297,12 @@ function verifyToken(req, res, next) {
     });
 }
 
-// VERSÃO DE DEPURAÇÃO DA ROTA DE ADIÇÃO (POST)
+// VERSÃO FINAL, EXPLÍCITA E CORRIGIDA DA ROTA DE ADIÇÃO (POST)
 app.post('/api/:sheetName', verifyToken, async (req, res) => {
     const { sheetName } = req.params;
     const data = req.body;
     const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
     const actualSheetName = allowedSheets[sheetName.toLowerCase()];
-
-    // --- LOG DE DEPURAÇÃO 1: DADOS RECEBIDOS ---
-    console.log(`--- TENTATIVA DE ADIÇÃO NA ABA: ${actualSheetName} ---`);
-    console.log('Dados recebidos do frontend (req.body):', data);
 
     if (!actualSheetName) {
         return res.status(400).send('Nome da planilha inválido.');
@@ -314,29 +310,40 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
 
     try {
         const sheets = google.sheets({ version: 'v4', auth });
-        
-        const headerResponse = await sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID,
-            range: `${actualSheetName}!1:1`,
-        });
-        const headers = headerResponse.data.values[0];
+        let newRow = [];
 
-        // --- LOG DE DEPURAÇÃO 2: CABEÇALHOS LIDOS ---
-        console.log('Cabeçalhos lidos da planilha:', headers);
-
-        const newRow = headers.map(header => {
-            const dataKey = Object.keys(data).find(k => k.toLowerCase() === header.toLowerCase());
-            const value = dataKey ? data[dataKey] : '';
-
-            if ((header.toLowerCase() === 'preço' || header.toLowerCase() === 'valor') && value) {
-                const numericValue = parseFloat(String(value).replace(',', '.'));
-                return isNaN(numericValue) ? '' : numericValue;
-            }
-            return value;
-        });
-
-        // --- LOG DE DEPURAÇÃO 3: LINHA A SER INSERIDA ---
-        console.log('Linha montada para ser inserida na planilha:', newRow);
+        // Lógica explícita para cada entidade, garantindo a ordem da planilha
+        if (actualSheetName === 'Clientes') {
+            // Ordem da planilha: ID, Nome, Contato, Endereço
+            newRow = [
+                data.ID || '',
+                data.Nome || '',
+                data.Contato || '',
+                data.Endereço || ''
+            ];
+        } else if (actualSheetName === 'Produtos') {
+            // Ordem da planilha: ID, Nome, Descrição, Preço
+            newRow = [
+                data.ID || '',
+                data.Nome || '',
+                data.Descrição || '',
+                data.Preço ? parseFloat(String(data.Preço).replace(',', '.')) : ''
+            ];
+        } else if (actualSheetName === '_Movimentacoes') {
+            // Ordem da planilha: ID Mov., Data, Tipo, Categoria, etc.
+            newRow = [
+                data['ID Mov.'] || '',
+                data.Data || '',
+                data['Tipo (Entrada/Saída)'] || '',
+                data.Categoria || '',
+                data.Descrição || '',
+                data.Valor ? parseFloat(String(data.Valor).replace(',', '.')) : '',
+                data.Responsável || '',
+                data.Observações || ''
+            ];
+        } else {
+            return res.status(400).send('Tipo de entidade não suportado para adição.');
+        }
 
         await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
@@ -345,16 +352,14 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
             resource: { values: [newRow] },
         });
 
-        console.log('SUCESSO: Dados adicionados na API do Google.');
         res.status(201).send('Dados adicionados com sucesso!');
 
     } catch (error) {
-        // --- LOG DE DEPURAÇÃO 4: ERRO DA API ---
-        console.error('!!! ERRO AO TENTAR ADICIONAR DADOS !!!');
-        console.error(error.message);
+        console.error(`Erro ao adicionar dados na aba ${actualSheetName}:`, error.message);
         res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
     }
 });
+
 
 
 
