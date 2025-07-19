@@ -141,41 +141,30 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
 });
 
 
-// Rota para apagar uma linha (VERSÃO FINALÍSSIMA - DELETANDO A LINHA FÍSICA)
+// Rota para apagar uma linha (VERSÃO FINALÍSSIMA CORRIGIDA)
 app.delete('/api/:sheetName', verifyToken, async (req, res) => {
     const { sheetName } = req.params;
     const { id, sheetId } = req.query;
 
-    // Validações
-    if (!['movimentacoes', 'clientes', 'produtos'].includes(sheetName.toLowerCase())) {
-        return res.status(400).send('Nome da planilha inválido.');
-    }
-    if (!id) {
-        return res.status(400).send('O ID do registo é obrigatório para a exclusão.');
-    }
-    if (!sheetId) {
-        return res.status(400).send('O ID da aba (sheetId) é obrigatório.');
-    }
+    if (!['movimentacoes', 'clientes', 'produtos'].includes(sheetName.toLowerCase())) { return res.status(400).send('Nome da planilha inválido.'); }
+    if (!id) { return res.status(400).send('O ID do registo é obrigatório para a exclusão.'); }
+    if (!sheetId) { return res.status(400).send('O ID da aba (sheetId) é obrigatório.'); }
 
     try {
         const sheets = google.sheets({ version: 'v4', auth });
         const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
         const actualSheetName = allowedSheets[sheetName.toLowerCase()];
 
-        // 1. LER TODOS OS DADOS DA PLANILHA
-        const getRows = await sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID,
-            range: actualSheetName,
-        });
+        const getRows = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: actualSheetName });
         const allData = getRows.data.values || [];
         const headers = allData[0];
-        const idColumnIndex = headers.findIndex(header => header.toUpperCase() === 'ID');
+        
+        // LÓGICA CORRIGIDA PARA ENCONTRAR A COLUNA DE ID
+        const idColumnName = actualSheetName === '_Movimentacoes' ? 'ID Mov.' : 'ID';
+        const idColumnIndex = headers.findIndex(header => header === idColumnName);
 
-        if (idColumnIndex === -1) {
-            return res.status(500).send('A coluna "ID" não foi encontrada na planilha.');
-        }
+        if (idColumnIndex === -1) { return res.status(500).send(`A coluna "${idColumnName}" não foi encontrada na planilha.`); }
 
-        // 2. ENCONTRAR A LINHA FÍSICA QUE CORRESPONDE AO ID
         let targetRowIndex = -1;
         for (let i = 1; i < allData.length; i++) {
             if (allData[i][idColumnIndex] === id) {
@@ -184,13 +173,7 @@ app.delete('/api/:sheetName', verifyToken, async (req, res) => {
             }
         }
 
-        if (targetRowIndex === -1) {
-            return res.status(404).send(`Registo com ID "${id}" não encontrado.`);
-        }
-
-        // 3. DELETAR A LINHA FÍSICA USANDO BATCHUPDATE
-        console.log(`--- TENTATIVA DE DELETAR LINHA FÍSICA POR ID ---`);
-        console.log(`ID a ser apagado: ${id}. Índice físico encontrado: ${targetRowIndex}.`);
+        if (targetRowIndex === -1) { return res.status(404).send(`Registo com ID "${id}" não encontrado.`); }
 
         await sheets.spreadsheets.batchUpdate({
             spreadsheetId: SPREADSHEET_ID,
@@ -200,7 +183,7 @@ app.delete('/api/:sheetName', verifyToken, async (req, res) => {
                         range: {
                             sheetId: parseInt(sheetId, 10),
                             dimension: 'ROWS',
-                            startIndex: targetRowIndex, // Usamos o índice físico (base 0)
+                            startIndex: targetRowIndex,
                             endIndex: targetRowIndex + 1
                         }
                     }
@@ -219,7 +202,7 @@ app.delete('/api/:sheetName', verifyToken, async (req, res) => {
 });
 
 
-// Rota para atualizar (editar) uma linha (VERSÃO FINAL COM MOVIMENTAÇÕES)
+// Rota para atualizar (editar) uma linha (VERSÃO FINALÍSSIMA CORRIGIDA)
 app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
     const { sheetName, rowIndex } = req.params;
     const updatedData = req.body;
@@ -238,8 +221,8 @@ app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
         const headerResponse = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${actualSheetName}!1:1` });
         const headers = headerResponse.data.values[0];
 
+        // LÓGICA RESTAURADA E CORRIGIDA
         if (actualSheetName === '_Movimentacoes') {
-            // LÓGICA NOVA E ESPECÍFICA PARA EDIÇÃO DE MOVIMENTAÇÕES
             updatedRowValues = headers.map(header => {
                 const value = updatedData[header] || '';
                 if (header === 'Valor') {
@@ -249,15 +232,12 @@ app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
                 return { userEnteredValue: { stringValue: value.toString() } };
             });
             fieldsToUpdate = 'userEnteredValue,userEnteredFormat';
-        } else {
-             // Lógica para Clientes e Produtos (já funcional)
-            if (actualSheetName === 'Clientes') {
-                updatedRowValues = [ { userEnteredValue: { stringValue: updatedData['ID'] || '' } }, { userEnteredValue: { stringValue: updatedData['Nome'] || '' } }, { userEnteredValue: { stringValue: updatedData['Contato'] || '' } }, { userEnteredValue: { stringValue: updatedData['Endereço'] || '' } } ];
-            } else if (actualSheetName === 'Produtos') {
-                const preco = updatedData['Preço'] ? String(updatedData['Preço']).replace(',', '.') : '';
-                updatedRowValues = [ { userEnteredValue: { stringValue: updatedData['ID'] || '' } }, { userEnteredValue: { stringValue: updatedData['Nome'] || '' } }, { userEnteredValue: { stringValue: updatedData['Descrição'] || '' } }, { userEnteredValue: { numberValue: preco ? parseFloat(preco) : null }, userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"R$"#,##0.00' } } } ];
-                fieldsToUpdate = 'userEnteredValue,userEnteredFormat';
-            }
+        } else if (actualSheetName === 'Clientes') {
+            updatedRowValues = [ { userEnteredValue: { stringValue: updatedData['ID'] || '' } }, { userEnteredValue: { stringValue: updatedData['Nome'] || '' } }, { userEnteredValue: { stringValue: updatedData['Contato'] || '' } }, { userEnteredValue: { stringValue: updatedData['Endereço'] || '' } } ];
+        } else if (actualSheetName === 'Produtos') {
+            const preco = updatedData['Preço'] ? String(updatedData['Preço']).replace(',', '.') : '';
+            updatedRowValues = [ { userEnteredValue: { stringValue: updatedData['ID'] || '' } }, { userEnteredValue: { stringValue: updatedData['Nome'] || '' } }, { userEnteredValue: { stringValue: updatedData['Descrição'] || '' } }, { userEnteredValue: { numberValue: preco ? parseFloat(preco) : null }, userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"R$"#,##0.00' } } } ];
+            fieldsToUpdate = 'userEnteredValue,userEnteredFormat';
         }
 
         await sheets.spreadsheets.batchUpdate({
