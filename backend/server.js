@@ -219,7 +219,7 @@ app.delete('/api/:sheetName', verifyToken, async (req, res) => {
 });
 
 
-// Rota para atualizar (editar) uma linha (VERSÃO FINALÍSSIMA)
+// Rota para atualizar (editar) uma linha (VERSÃO FINAL COM MOVIMENTAÇÕES)
 app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
     const { sheetName, rowIndex } = req.params;
     const updatedData = req.body;
@@ -227,51 +227,37 @@ app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
     const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
     const actualSheetName = allowedSheets[sheetName.toLowerCase()];
 
-    if (!actualSheetName) {
-        return res.status(400).send('Nome da planilha inválido.');
-    }
-    if (sheetId === undefined) {
-        return res.status(400).send('O ID da aba (sheetId) é necessário para a edição.');
-    }
+    if (!actualSheetName) { return res.status(400).send('Nome da planilha inválido.'); }
+    if (sheetId === undefined) { return res.status(400).send('O ID da aba (sheetId) é necessário para a edição.'); }
 
     try {
         const sheets = google.sheets({ version: 'v4', auth });
         let updatedRowValues = [];
-        let fieldsToUpdate = 'userEnteredValue'; // Padrão para strings
+        let fieldsToUpdate = 'userEnteredValue';
 
-        // Lógica específica para cada aba
-        if (actualSheetName === 'Clientes') {
-            updatedRowValues = [
-                { userEnteredValue: { stringValue: updatedData['ID'] || '' } },
-                { userEnteredValue: { stringValue: updatedData['Nome'] || '' } },
-                { userEnteredValue: { stringValue: updatedData['Contato'] || '' } },
-                { userEnteredValue: { stringValue: updatedData['Endereço'] || '' } }
-            ];
-        } else if (actualSheetName === 'Produtos') {
-            const preco = updatedData['Preço'] ? String(updatedData['Preço']).replace(',', '.') : '';
-            updatedRowValues = [
-                { userEnteredValue: { stringValue: updatedData['ID'] || '' } },
-                { userEnteredValue: { stringValue: updatedData['Nome'] || '' } },
-                { userEnteredValue: { stringValue: updatedData['Descrição'] || '' } },
-                { 
-                    userEnteredValue: { numberValue: preco ? parseFloat(preco) : null },
-                    // Força a formatação de moeda na edição
-                    userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"R$"#,##0.00' } }
-                }
-            ];
-            // Informa à API que também estamos atualizando o formato
-            fieldsToUpdate = 'userEnteredValue,userEnteredFormat'; 
-        } else {
-            // Lógica genérica para _Movimentacoes (se necessário)
-            const headerResponse = await sheets.spreadsheets.values.get({
-                spreadsheetId: SPREADSHEET_ID,
-                range: `${actualSheetName}!1:1`,
-            });
-            const headers = headerResponse.data.values[0];
+        const headerResponse = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${actualSheetName}!1:1` });
+        const headers = headerResponse.data.values[0];
+
+        if (actualSheetName === '_Movimentacoes') {
+            // LÓGICA NOVA E ESPECÍFICA PARA EDIÇÃO DE MOVIMENTAÇÕES
             updatedRowValues = headers.map(header => {
                 const value = updatedData[header] || '';
+                if (header === 'Valor') {
+                    const valorNumerico = value ? parseFloat(String(value).replace(',', '.')) : null;
+                    return { userEnteredValue: { numberValue: valorNumerico }, userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"R$"#,##0.00' } } };
+                }
                 return { userEnteredValue: { stringValue: value.toString() } };
             });
+            fieldsToUpdate = 'userEnteredValue,userEnteredFormat';
+        } else {
+             // Lógica para Clientes e Produtos (já funcional)
+            if (actualSheetName === 'Clientes') {
+                updatedRowValues = [ { userEnteredValue: { stringValue: updatedData['ID'] || '' } }, { userEnteredValue: { stringValue: updatedData['Nome'] || '' } }, { userEnteredValue: { stringValue: updatedData['Contato'] || '' } }, { userEnteredValue: { stringValue: updatedData['Endereço'] || '' } } ];
+            } else if (actualSheetName === 'Produtos') {
+                const preco = updatedData['Preço'] ? String(updatedData['Preço']).replace(',', '.') : '';
+                updatedRowValues = [ { userEnteredValue: { stringValue: updatedData['ID'] || '' } }, { userEnteredValue: { stringValue: updatedData['Nome'] || '' } }, { userEnteredValue: { stringValue: updatedData['Descrição'] || '' } }, { userEnteredValue: { numberValue: preco ? parseFloat(preco) : null }, userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"R$"#,##0.00' } } } ];
+                fieldsToUpdate = 'userEnteredValue,userEnteredFormat';
+            }
         }
 
         await sheets.spreadsheets.batchUpdate({
@@ -281,7 +267,7 @@ app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
                     updateCells: {
                         start: { sheetId: parseInt(sheetId, 10), rowIndex: parseInt(rowIndex, 10) + 1, columnIndex: 0 },
                         rows: [{ values: updatedRowValues }],
-                        fields: fieldsToUpdate // Usa a variável correta de campos
+                        fields: fieldsToUpdate
                     }
                 }]
             }
@@ -292,6 +278,7 @@ app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
         res.status(500).send(`Erro ao atualizar registo: ${error.message}`);
     }
 });
+
 
 
 // --- ROTAS DE AUTENTICAÇÃO ---
@@ -314,7 +301,7 @@ function verifyToken(req, res, next) {
     });
 }
 
-// Rota para adicionar dados a uma aba (VERSÃO FINAL COM PRODUTOS)
+// Rota para adicionar dados a uma aba (VERSÃO FINAL COM MOVIMENTAÇÕES)
 app.post('/api/:sheetName', verifyToken, async (req, res) => {
     let { sheetName } = req.params;
     const data = req.body;
@@ -329,30 +316,22 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
         const sheets = google.sheets({ version: 'v4', auth });
         let newRow = [];
 
-        // Lógica específica para cada aba para garantir a ordem e o formato corretos
         if (actualSheetName === 'Clientes') {
-            newRow = [
-                data['ID'] || '',
-                data['Nome'] || '',
-                data['Contato'] || '',
-                data['Endereço'] || ''
-            ];
+            newRow = [ data['ID'] || '', data['Nome'] || '', data['Contato'] || '', data['Endereço'] || '' ];
         } else if (actualSheetName === 'Produtos') {
-            // LÓGICA NOVA E ESPECÍFICA PARA PRODUTOS
-            newRow = [
-                data['ID'] || '',
-                data['Nome'] || '',
-                data['Descrição'] || '',
-                // Garante que o preço seja tratado como um número
-                data['Preço'] ? parseFloat(data['Preço']) : '' 
-            ];
+            newRow = [ data['ID'] || '', data['Nome'] || '', data['Descrição'] || '', data['Preço'] ? parseFloat(String(data['Preço']).replace(',', '.')) : '' ];
         } else if (actualSheetName === '_Movimentacoes') {
-            const headerResponse = await sheets.spreadsheets.values.get({
-                spreadsheetId: SPREADSHEET_ID,
-                range: `${actualSheetName}!1:1`,
-            });
+            // LÓGICA NOVA E ESPECÍFICA PARA MOVIMENTAÇÕES
+            const headerResponse = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${actualSheetName}!1:1` });
             const headers = headerResponse.data.values[0];
-            newRow = headers.map(header => data[header] || '');
+            newRow = headers.map(header => {
+                const value = data[header] || '';
+                // Se a coluna for "Valor", trata como número; senão, como texto.
+                if (header === 'Valor') {
+                    return value ? parseFloat(String(value).replace(',', '.')) : '';
+                }
+                return value;
+            });
         } else {
             return res.status(400).send('Tipo de entidade não suportado para adição.');
         }
@@ -360,8 +339,7 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
         await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
             range: actualSheetName,
-            // Importante: USER_ENTERED interpreta o número e aplica o formato da célula
-            valueInputOption: 'USER_ENTERED', 
+            valueInputOption: 'USER_ENTERED',
             resource: { values: [newRow] },
         });
 
@@ -372,6 +350,7 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
         res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
     }
 });
+
 
 
 // Rota para fazer login de um utilizador
