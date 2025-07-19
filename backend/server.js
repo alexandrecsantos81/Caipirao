@@ -202,7 +202,7 @@ app.delete('/api/:sheetName', verifyToken, async (req, res) => {
 });
 
 
-// Rota para atualizar (editar) uma linha (VERSÃO FINALÍSSIMA CORRIGIDA)
+// Rota para atualizar (editar) uma linha (VERSÃO FINALÍSSIMA E COMPLETA)
 app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
     const { sheetName, rowIndex } = req.params;
     const updatedData = req.body;
@@ -221,8 +221,15 @@ app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
         const headerResponse = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${actualSheetName}!1:1` });
         const headers = headerResponse.data.values[0];
 
-        // LÓGICA RESTAURADA E CORRIGIDA
-        if (actualSheetName === '_Movimentacoes') {
+        // LÓGICA CORRIGIDA E COMPLETA
+        if (actualSheetName === 'Clientes') {
+            updatedRowValues = [ { userEnteredValue: { stringValue: updatedData['ID'] || '' } }, { userEnteredValue: { stringValue: updatedData['Nome'] || '' } }, { userEnteredValue: { stringValue: updatedData['Contato'] || '' } }, { userEnteredValue: { stringValue: updatedData['Endereço'] || '' } } ];
+        } else if (actualSheetName === 'Produtos') {
+            const preco = updatedData['Preço'] ? String(updatedData['Preço']).replace(',', '.') : '';
+            updatedRowValues = [ { userEnteredValue: { stringValue: updatedData['ID'] || '' } }, { userEnteredValue: { stringValue: updatedData['Nome'] || '' } }, { userEnteredValue: { stringValue: updatedData['Descrição'] || '' } }, { userEnteredValue: { numberValue: preco ? parseFloat(preco) : null }, userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"R$"#,##0.00' } } } ];
+            fieldsToUpdate = 'userEnteredValue,userEnteredFormat';
+        } else if (actualSheetName === '_Movimentacoes') {
+            // LÓGICA RESTAURADA PARA MOVIMENTAÇÕES
             updatedRowValues = headers.map(header => {
                 const value = updatedData[header] || '';
                 if (header === 'Valor') {
@@ -231,12 +238,6 @@ app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
                 }
                 return { userEnteredValue: { stringValue: value.toString() } };
             });
-            fieldsToUpdate = 'userEnteredValue,userEnteredFormat';
-        } else if (actualSheetName === 'Clientes') {
-            updatedRowValues = [ { userEnteredValue: { stringValue: updatedData['ID'] || '' } }, { userEnteredValue: { stringValue: updatedData['Nome'] || '' } }, { userEnteredValue: { stringValue: updatedData['Contato'] || '' } }, { userEnteredValue: { stringValue: updatedData['Endereço'] || '' } } ];
-        } else if (actualSheetName === 'Produtos') {
-            const preco = updatedData['Preço'] ? String(updatedData['Preço']).replace(',', '.') : '';
-            updatedRowValues = [ { userEnteredValue: { stringValue: updatedData['ID'] || '' } }, { userEnteredValue: { stringValue: updatedData['Nome'] || '' } }, { userEnteredValue: { stringValue: updatedData['Descrição'] || '' } }, { userEnteredValue: { numberValue: preco ? parseFloat(preco) : null }, userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"R$"#,##0.00' } } } ];
             fieldsToUpdate = 'userEnteredValue,userEnteredFormat';
         }
 
