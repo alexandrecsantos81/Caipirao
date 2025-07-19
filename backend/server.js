@@ -295,55 +295,57 @@ function verifyToken(req, res, next) {
     });
 }
 
-// Rota para adicionar dados a uma aba (VERSÃO FINAL COM MOVIMENTAÇÕES)
-app.post('/api/:sheetName', verifyToken, async (req, res) => {
-    let { sheetName } = req.params;
-    const data = req.body;
-    const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
-    const actualSheetName = allowedSheets[sheetName.toLowerCase()];
+    // VERSÃO FINAL E CORRIGIDA DA ROTA DE ADIÇÃO (POST)
+    app.post('/api/:sheetName', verifyToken, async (req, res) => {
+        const { sheetName } = req.params;
+        const data = req.body;
+        const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
+        const actualSheetName = allowedSheets[sheetName.toLowerCase()];
 
-    if (!actualSheetName) {
-        return res.status(400).send('Nome da planilha inválido.');
-    }
+        if (!actualSheetName) {
+            return res.status(400).send('Nome da planilha inválido.');
+        }
 
-    try {
-        const sheets = google.sheets({ version: 'v4', auth });
-        let newRow = [];
-
-        if (actualSheetName === 'Clientes') {
-            newRow = [ data['ID'] || '', data['Nome'] || '', data['Contato'] || '', data['Endereço'] || '' ];
-        } else if (actualSheetName === 'Produtos') {
-            newRow = [ data['ID'] || '', data['Nome'] || '', data['Descrição'] || '', data['Preço'] ? parseFloat(String(data['Preço']).replace(',', '.')) : '' ];
-        } else if (actualSheetName === '_Movimentacoes') {
-            // LÓGICA NOVA E ESPECÍFICA PARA MOVIMENTAÇÕES
-            const headerResponse = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${actualSheetName}!1:1` });
+        try {
+            const sheets = google.sheets({ version: 'v4', auth });
+            
+            // Pega os cabeçalhos da planilha
+            const headerResponse = await sheets.spreadsheets.values.get({
+                spreadsheetId: SPREADSHEET_ID,
+                range: `${actualSheetName}!1:1`,
+            });
             const headers = headerResponse.data.values[0];
-            newRow = headers.map(header => {
-                const value = data[header] || '';
-                // Se a coluna for "Valor", trata como número; senão, como texto.
-                if (header === 'Valor') {
-                    return value ? parseFloat(String(value).replace(',', '.')) : '';
+
+            // Monta a nova linha na ordem correta dos cabeçalhos,
+            // tratando os dados de forma insensível a maiúsculas/minúsculas.
+            const newRow = headers.map(header => {
+                // Procura a chave correspondente em 'data' ignorando o case
+                const dataKey = Object.keys(data).find(k => k.toLowerCase() === header.toLowerCase());
+                const value = dataKey ? data[dataKey] : '';
+
+                // Trata o valor monetário
+                if ((header.toLowerCase() === 'preço' || header.toLowerCase() === 'valor') && value) {
+                    const numericValue = parseFloat(String(value).replace(',', '.'));
+                    return isNaN(numericValue) ? '' : numericValue;
                 }
                 return value;
             });
-        } else {
-            return res.status(400).send('Tipo de entidade não suportado para adição.');
+
+            await sheets.spreadsheets.values.append({
+                spreadsheetId: SPREADSHEET_ID,
+                range: actualSheetName,
+                valueInputOption: 'USER_ENTERED',
+                resource: { values: [newRow] },
+            });
+
+            res.status(201).send('Dados adicionados com sucesso!');
+
+        } catch (error) {
+            console.error(`Erro ao adicionar dados na aba ${actualSheetName}:`, error.message);
+            res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
         }
+    });
 
-        await sheets.spreadsheets.values.append({
-            spreadsheetId: SPREADSHEET_ID,
-            range: actualSheetName,
-            valueInputOption: 'USER_ENTERED',
-            resource: { values: [newRow] },
-        });
-
-        res.status(201).send('Dados adicionados com sucesso!');
-
-    } catch (error) {
-        console.error(`Erro ao adicionar dados na aba ${actualSheetName}:`, error.message);
-        res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
-    }
-});
 
 
 
