@@ -10,9 +10,30 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- Middlewares Essenciais ---
-app.use(cors({
-    origin: 'https://caipiraosys.netlify.app'
-} ));
+
+// Lista de origens permitidas
+const allowedOrigins = [
+    'https://caipiraosys.netlify.app',
+    'http://localhost:5500', // Para testes com o Live Server
+    'http://127.0.0.1:5500'  // Outra variação do localhost
+];
+
+// Configuração do CORS
+const corsOptions = {
+    origin: function (origin, callback ) {
+        // Permite requisições sem 'origin' (como Postman, apps mobile, etc.)
+        // ou se a origem estiver na lista de permitidas.
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Não permitido pela política de CORS'));
+        }
+    },
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Garante que todos os métodos HTTP são permitidos
+    credentials: true // Se você precisar lidar com cookies ou headers de autorização
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // --- Configuração da Autenticação Google ---
