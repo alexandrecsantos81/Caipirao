@@ -202,11 +202,15 @@ app.delete('/api/:sheetName', verifyToken, async (req, res) => {
 });
 
 
-// Rota para atualizar (editar) uma linha (VERSÃO FINALÍSSIMA POR ID)
+// Rota para atualizar (editar) uma linha (VERSÃO FINALÍSSIMA POR ID E SEM ROWINDEX NA URL)
 app.put('/api/:sheetName', verifyToken, async (req, res) => {
     const { sheetName } = req.params;
     const updatedData = req.body;
-    const { id, sheetId } = updatedData; // Pegamos o ID do corpo da requisição
+    // Pega o 'id' e 'sheetId' do corpo da requisição
+    const { id, sheetId } = updatedData; 
+
+    const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
+    const actualSheetName = allowedSheets[sheetName.toLowerCase()];
 
     if (!actualSheetName) { return res.status(400).send('Nome da planilha inválido.'); }
     if (!id) { return res.status(400).send('O ID do registo é obrigatório para a edição.'); }
@@ -215,7 +219,6 @@ app.put('/api/:sheetName', verifyToken, async (req, res) => {
     try {
         const sheets = google.sheets({ version: 'v4', auth });
         
-        // 1. ENCONTRAR A LINHA FÍSICA QUE CORRESPONDE AO ID
         const getRows = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: actualSheetName });
         const allData = getRows.data.values || [];
         const headers = allData[0];
@@ -234,33 +237,18 @@ app.put('/api/:sheetName', verifyToken, async (req, res) => {
 
         if (targetRowIndex === -1) { return res.status(404).send(`Registo com ID "${id}" não encontrado.`); }
 
-        // 2. PREPARAR OS DADOS PARA ATUALIZAÇÃO
         let updatedRowValues = [];
-        let fieldsToUpdate = 'userEnteredValue';
+        let fieldsToUpdate = 'userEnteredValue,userEnteredFormat'; // Padrão mais robusto
 
-        if (actualSheetName === '_Movimentacoes') {
-            updatedRowValues = headers.map(header => {
-                const value = updatedData[header] || '';
-                if (header === 'Valor') {
-                    const valorNumerico = value ? parseFloat(String(value).replace(',', '.')) : null;
-                    return { userEnteredValue: { numberValue: valorNumerico }, userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"R$"#,##0.00' } } };
-                }
-                return { userEnteredValue: { stringValue: value.toString() } };
-            });
-            fieldsToUpdate = 'userEnteredValue,userEnteredFormat';
-        } else { // Lógica para Clientes e Produtos
-             updatedRowValues = headers.map(header => {
-                const value = updatedData[header] || '';
-                 if (header === 'Preço') {
-                    const precoNumerico = value ? parseFloat(String(value).replace(',', '.')) : null;
-                    return { userEnteredValue: { numberValue: precoNumerico }, userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"R$"#,##0.00' } } };
-                }
-                return { userEnteredValue: { stringValue: value.toString() } };
-            });
-            fieldsToUpdate = 'userEnteredValue,userEnteredFormat';
-        }
+        updatedRowValues = headers.map(header => {
+            const value = updatedData[header] || '';
+            if (header === 'Valor' || header === 'Preço') {
+                const valorNumerico = value ? parseFloat(String(value).replace(',', '.')) : null;
+                return { userEnteredValue: { numberValue: valorNumerico }, userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"R$"#,##0.00' } } };
+            }
+            return { userEnteredValue: { stringValue: value.toString() } };
+        });
 
-        // 3. EXECUTAR A ATUALIZAÇÃO NA LINHA CORRETA
         await sheets.spreadsheets.batchUpdate({
             spreadsheetId: SPREADSHEET_ID,
             resource: {
@@ -279,6 +267,7 @@ app.put('/api/:sheetName', verifyToken, async (req, res) => {
         res.status(500).send(`Erro ao atualizar registo: ${error.message}`);
     }
 });
+
 
 
 
