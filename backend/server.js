@@ -110,7 +110,7 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
                 data['ID'] || '',
                 data['Nome'] || '',
                 data['Descrição'] || '',
-                data['Preço'] || ''
+                data['Preço'] ? parseFloat(data['Preço'].replace(',', '.')) : ''
             ];
         } else if (actualSheetName === '_Movimentacoes') {
             // Pega os cabeçalhos dinamicamente para movimentações, pois são muitos campos
