@@ -137,7 +137,7 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
 // Rota para apagar uma linha
 app.delete('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
     const { sheetName, rowIndex } = req.params;
-    const { sheetId } = req.body;
+    const { sheetId } = req.query;
 
     if (!['movimentacoes', 'clientes', 'produtos'].includes(sheetName.toLowerCase())) {
         return res.status(400).send('Nome da planilha inválido.');

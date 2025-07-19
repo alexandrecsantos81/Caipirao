@@ -210,10 +210,9 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoader();
         try {
             const apiRowIndex = rowIndex + 1;
-            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}/${apiRowIndex}`, { 
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}/${apiRowIndex}?sheetId=${sheetId}`, { 
                 method: 'DELETE',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ sheetId })
+                headers: getAuthHeaders()
             });
             
             if (!response.ok) throw new Error(await response.text());
