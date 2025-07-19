@@ -82,7 +82,7 @@ app.get('/api/:sheetName', verifyToken, async (req, res) => {
     }
 });
 
-    // VERSÃO FINAL E PADRONIZADA DA ROTA DE ADIÇÃO (POST)
+    // VERSÃO FINAL E CORRIGIDA DA ROTA DE ADIÇÃO (POST)
     app.post('/api/:sheetName', verifyToken, async (req, res) => {
         const { sheetName } = req.params;
         const data = req.body;
@@ -106,11 +106,12 @@ app.get('/api/:sheetName', verifyToken, async (req, res) => {
                     data.Endereço || ''
                 ];
             } else if (actualSheetName === 'Produtos') {
+                // CORREÇÃO APLICADA AQUI
                 newRow = [
-                    data.ID || '',
-                    data.Nome || '',
-                    data.Descrição || '',
-                    data.Preço ? parseFloat(String(data.Preço).replace(',', '.')) : ''
+                    data.id_produto || '',
+                    data.nome_produto || '',
+                    data.descricao_produto || '',
+                    data.preco_produto ? parseFloat(String(data.preco_produto).replace(',', '.')) : ''
                 ];
             } else if (actualSheetName === '_Movimentacoes') {
                 newRow = [
@@ -141,8 +142,6 @@ app.get('/api/:sheetName', verifyToken, async (req, res) => {
             res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
         }
     });
-
-
 
 // Rota para apagar uma linha (VERSÃO FINALÍSSIMA CORRIGIDA)
 app.delete('/api/:sheetName', verifyToken, async (req, res) => {
