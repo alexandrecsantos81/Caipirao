@@ -249,61 +249,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-// VERSÃO FINAL DE openEditModal
-function openEditModal(entity, rowData, sheetId) {
-    const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
-    currentEditInfo = { 
-        entity, 
-        sheetId,
-        id: rowData[idKey]
-    };
+    // VERSÃO FINAL E CORRIGIDA DE openEditModal
+    function openEditModal(entity, rowData, sheetId) {
+        const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
+        const idValue = rowData[idKey];
 
-    // Limpa os campos do formulário anterior
-    editFormFields.innerHTML = '';
-
-    // Loop para criar dinamicamente os campos de input no modal
-    for (const key in rowData) {
-        if (key.toLowerCase() === 'sheetid') continue;
-        
-        const fieldWrapper = document.createElement('div');
-        const label = document.createElement('label');
-        label.htmlFor = `edit-${key}`;
-        label.className = 'block text-sm font-medium text-slate-700';
-        label.textContent = key;
-        
-        const input = document.createElement('input');
-        let currentValue = rowData[key];
-
-        if (key.toLowerCase() === 'preço' || key.toLowerCase() === 'valor') {
-            currentValue = String(currentValue).replace(/[^0-9,.]/g, '').replace(',', '.');
-            input.type = 'text';
-            input.inputMode = 'decimal';
-            input.pattern = "[0-9]*[.,]?[0-9]+";
-        } else {
-            input.type = 'text';
-        }
-        
-        input.id = `edit-${key}`;
-        input.name = key;
-        input.value = currentValue;
-        input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm';
-        
-        // Desabilita a edição do campo de ID
-        if (key === idKey) {
-            input.disabled = true;
-            input.classList.add('bg-slate-100');
+        // VALIDAÇÃO CRÍTICA: Se o ID não existir, não abre o modal.
+        if (!idValue) {
+            showNotification('Não é possível editar um registo sem ID.', 'error');
+            console.error("Tentativa de abrir modal de edição para um registo sem ID:", rowData);
+            return;
         }
 
-        fieldWrapper.appendChild(label);
-        fieldWrapper.appendChild(input);
-        editFormFields.appendChild(fieldWrapper);
+        currentEditInfo = { 
+            entity, 
+            sheetId,
+            id: idValue
+        };
+
+        editFormFields.innerHTML = '';
+
+        for (const key in rowData) {
+            if (key.toLowerCase() === 'sheetid') continue;
+            
+            const fieldWrapper = document.createElement('div');
+            const label = document.createElement('label');
+            label.htmlFor = `edit-${key}`;
+            label.className = 'block text-sm font-medium text-slate-700';
+            label.textContent = key;
+            
+            const input = document.createElement('input');
+            let currentValue = rowData[key];
+
+            if (key.toLowerCase() === 'preço' || key.toLowerCase() === 'valor') {
+                currentValue = String(currentValue).replace(/[^0-9,.]/g, '').replace(',', '.');
+                input.type = 'text';
+                input.inputMode = 'decimal';
+                input.pattern = "[0-9]*[.,]?[0-9]+";
+            } else {
+                input.type = 'text';
+            }
+            
+            input.id = `edit-${key}`;
+            input.name = key;
+            input.value = currentValue;
+            input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm';
+            
+            if (key === idKey) {
+                input.disabled = true;
+                input.classList.add('bg-slate-100');
+            }
+
+            fieldWrapper.appendChild(label);
+            fieldWrapper.appendChild(input);
+            editFormFields.appendChild(fieldWrapper);
+        }
+
+        modalBackdrop.classList.remove('hidden');
+        modalBackdrop.classList.add('flex');
+        setTimeout(() => modal.classList.remove('-translate-y-full'), 50);
     }
 
-    // Mostra o modal
-    modalBackdrop.classList.remove('hidden');
-    modalBackdrop.classList.add('flex');
-    setTimeout(() => modal.classList.remove('-translate-y-full'), 50);
-}
 
 
 
@@ -318,56 +324,56 @@ function openEditModal(entity, rowData, sheetId) {
     closeModalBtn.addEventListener('click', closeEditModal);
     cancelEditBtn.addEventListener('click', closeEditModal);
 
-// VERSÃO FINAL DO SUBMIT DE EDIÇÃO
-editForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    showLoader();
-    
-    const formData = new FormData(editForm);
-    const updatedData = Object.fromEntries(formData.entries());
-    
-    // CORREÇÃO: Pega 'entity', 'sheetId' e 'id' diretamente de 'currentEditInfo'
-    const { entity, sheetId, id } = currentEditInfo; 
-    
-    // Adiciona o ID ao corpo da requisição, pois ele não vem do formulário
-    updatedData.id = id;
-    
-    // Validação para garantir que as informações essenciais existem
-    if (!entity || !id) {
-        hideLoader();
-        showNotification('Erro crítico: Informação da entidade ou ID não encontrada.', 'error');
-        console.error("Erro de validação no frontend:", currentEditInfo); // Log para depuração
-        return;
-    }
-
-    try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}`, {
-            method: 'PUT',
-            headers: getAuthHeaders(),
-            body: JSON.stringify(updatedData)
-        });
+    // VERSÃO FINAL DO SUBMIT DE EDIÇÃO
+    editForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        showLoader();
         
-        const responseText = await response.text();
-        if (!response.ok) {
-            showNotification(`Falha ao atualizar: ${responseText}`, 'error');
+        const formData = new FormData(editForm);
+        const updatedData = Object.fromEntries(formData.entries());
+        
+        // CORREÇÃO: Pega 'entity', 'sheetId' e 'id' diretamente de 'currentEditInfo'
+        const { entity, sheetId, id } = currentEditInfo; 
+        
+        // Adiciona o ID ao corpo da requisição, pois ele não vem do formulário
+        updatedData.id = id;
+        
+        // Validação para garantir que as informações essenciais existem
+        if (!entity || !id) {
+            hideLoader();
+            showNotification('Erro crítico: Informação da entidade ou ID não encontrada.', 'error');
+            console.error("Erro de validação no frontend:", currentEditInfo); // Log para depuração
             return;
         }
-        
-        showNotification('Registo atualizado com sucesso!', 'success');
-        closeEditModal();
-        
-        // Recarrega os dados da aba correta
-        if (entity === 'clientes') { fetchClientes(); } 
-        else if (entity === 'produtos') { fetchProdutos(); } 
-        else if (entity === 'movimentacoes') { fetchMovimentacoes(); }
 
-    } catch (error) {
-        console.error(`Erro de rede ao atualizar ${entity}:`, error);
-        showNotification(`Erro de rede: ${error.message}`, 'error');
-    } finally {
-        hideLoader();
-    }
-});
+        try {
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(updatedData)
+            });
+            
+            const responseText = await response.text();
+            if (!response.ok) {
+                showNotification(`Falha ao atualizar: ${responseText}`, 'error');
+                return;
+            }
+            
+            showNotification('Registo atualizado com sucesso!', 'success');
+            closeEditModal();
+            
+            // Recarrega os dados da aba correta
+            if (entity === 'clientes') { fetchClientes(); } 
+            else if (entity === 'produtos') { fetchProdutos(); } 
+            else if (entity === 'movimentacoes') { fetchMovimentacoes(); }
+
+        } catch (error) {
+            console.error(`Erro de rede ao atualizar ${entity}:`, error);
+            showNotification(`Erro de rede: ${error.message}`, 'error');
+        } finally {
+            hideLoader();
+        }
+    });
 
 
 
@@ -387,79 +393,79 @@ editForm.addEventListener('submit', async (event) => {
         });
     }
 
-// VERSÃO FINAL DE createTable
-function createTable(container, data, entityName, sheetId) {
-    container.innerHTML = '';
-    
-    if (!data || data.length === 0) {
-        container.innerHTML = '<p>Nenhum dado encontrado.</p>';
-        return;
-    }
-    
-    const table = document.createElement('table');
-    table.className = 'w-full text-left';
-    
-    const thead = document.createElement('thead');
-    thead.className = 'bg-slate-100';
-    
-    const headerRow = document.createElement('tr');
-    const headers = Object.keys(data[0] || {});
-    
-    headers.forEach(headerText => {
-        const th = document.createElement('th');
-        th.className = 'p-3 font-semibold';
-        th.textContent = headerText;
-        headerRow.appendChild(th);
-    });
-    
-    const thAcoes = document.createElement('th');
-    thAcoes.className = 'p-3 font-semibold text-right';
-    thAcoes.textContent = 'Ações';
-    headerRow.appendChild(thAcoes);
-    
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-    
-    const tbody = document.createElement('tbody');
-    
-    data.forEach((rowData) => { // Removido 'index' que não é mais usado aqui
-        // Filtra linhas vazias que podem vir da planilha
-        if (Object.values(rowData).every(val => val === '')) return;
-
-        const row = document.createElement('tr');
-        row.className = 'border-b border-slate-200 hover:bg-slate-50';
+    // VERSÃO FINAL DE createTable
+    function createTable(container, data, entityName, sheetId) {
+        container.innerHTML = '';
         
-        headers.forEach(header => {
-            const td = document.createElement('td');
-            td.className = 'p-3';
-            td.textContent = rowData[header];
-            row.appendChild(td);
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p>Nenhum dado encontrado.</p>';
+            return;
+        }
+        
+        const table = document.createElement('table');
+        table.className = 'w-full text-left';
+        
+        const thead = document.createElement('thead');
+        thead.className = 'bg-slate-100';
+        
+        const headerRow = document.createElement('tr');
+        const headers = Object.keys(data[0] || {});
+        
+        headers.forEach(headerText => {
+            const th = document.createElement('th');
+            th.className = 'p-3 font-semibold';
+            th.textContent = headerText;
+            headerRow.appendChild(th);
         });
         
-        const tdBotao = document.createElement('td');
-        tdBotao.className = 'p-3 text-right space-x-2';
+        const thAcoes = document.createElement('th');
+        thAcoes.className = 'p-3 font-semibold text-right';
+        thAcoes.textContent = 'Ações';
+        headerRow.appendChild(thAcoes);
         
-        const editButton = document.createElement('button');
-        editButton.textContent = 'Editar';
-        editButton.className = 'bg-blue-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-blue-600';
-        // Passa o objeto de dados completo para a função de edição
-        editButton.addEventListener('click', () => openEditModal(entityName, rowData, sheetId));
-        tdBotao.appendChild(editButton);
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
         
-        const deleteButton = document.createElement('button');
-        deleteButton.textContent = 'Apagar';
-        deleteButton.className = 'bg-red-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-red-600';
-        // Passa o objeto de dados completo para a função de exclusão
-        deleteButton.addEventListener('click', () => deleteRow(entityName, rowData, sheetId));
-        tdBotao.appendChild(deleteButton);
+        const tbody = document.createElement('tbody');
         
-        row.appendChild(tdBotao);
-        tbody.appendChild(row);
-    });
-    
-    table.appendChild(tbody);
-    container.appendChild(table);
-}
+        data.forEach((rowData) => { // Removido 'index' que não é mais usado aqui
+            // Filtra linhas vazias que podem vir da planilha
+            if (Object.values(rowData).every(val => val === '')) return;
+
+            const row = document.createElement('tr');
+            row.className = 'border-b border-slate-200 hover:bg-slate-50';
+            
+            headers.forEach(header => {
+                const td = document.createElement('td');
+                td.className = 'p-3';
+                td.textContent = rowData[header];
+                row.appendChild(td);
+            });
+            
+            const tdBotao = document.createElement('td');
+            tdBotao.className = 'p-3 text-right space-x-2';
+            
+            const editButton = document.createElement('button');
+            editButton.textContent = 'Editar';
+            editButton.className = 'bg-blue-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-blue-600';
+            // Passa o objeto de dados completo para a função de edição
+            editButton.addEventListener('click', () => openEditModal(entityName, rowData, sheetId));
+            tdBotao.appendChild(editButton);
+            
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Apagar';
+            deleteButton.className = 'bg-red-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-red-600';
+            // Passa o objeto de dados completo para a função de exclusão
+            deleteButton.addEventListener('click', () => deleteRow(entityName, rowData, sheetId));
+            tdBotao.appendChild(deleteButton);
+            
+            row.appendChild(tdBotao);
+            tbody.appendChild(row);
+        });
+        
+        table.appendChild(tbody);
+        container.appendChild(table);
+    }
 
 
     // --- LÓGICA DOS FORMULÁRIOS DE ADIÇÃO ---
