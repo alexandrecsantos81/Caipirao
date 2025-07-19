@@ -297,12 +297,16 @@ function verifyToken(req, res, next) {
     });
 }
 
-// VERSÃO FINAL E CORRIGIDA DA ROTA DE ADIÇÃO (POST)
+// VERSÃO DE DEPURAÇÃO DA ROTA DE ADIÇÃO (POST)
 app.post('/api/:sheetName', verifyToken, async (req, res) => {
     const { sheetName } = req.params;
     const data = req.body;
     const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
     const actualSheetName = allowedSheets[sheetName.toLowerCase()];
+
+    // --- LOG DE DEPURAÇÃO 1: DADOS RECEBIDOS ---
+    console.log(`--- TENTATIVA DE ADIÇÃO NA ABA: ${actualSheetName} ---`);
+    console.log('Dados recebidos do frontend (req.body):', data);
 
     if (!actualSheetName) {
         return res.status(400).send('Nome da planilha inválido.');
@@ -317,6 +321,9 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
         });
         const headers = headerResponse.data.values[0];
 
+        // --- LOG DE DEPURAÇÃO 2: CABEÇALHOS LIDOS ---
+        console.log('Cabeçalhos lidos da planilha:', headers);
+
         const newRow = headers.map(header => {
             const dataKey = Object.keys(data).find(k => k.toLowerCase() === header.toLowerCase());
             const value = dataKey ? data[dataKey] : '';
@@ -328,6 +335,9 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
             return value;
         });
 
+        // --- LOG DE DEPURAÇÃO 3: LINHA A SER INSERIDA ---
+        console.log('Linha montada para ser inserida na planilha:', newRow);
+
         await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
             range: actualSheetName,
@@ -335,13 +345,17 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
             resource: { values: [newRow] },
         });
 
+        console.log('SUCESSO: Dados adicionados na API do Google.');
         res.status(201).send('Dados adicionados com sucesso!');
 
     } catch (error) {
-        console.error(`Erro ao adicionar dados na aba ${actualSheetName}:`, error.message);
+        // --- LOG DE DEPURAÇÃO 4: ERRO DA API ---
+        console.error('!!! ERRO AO TENTAR ADICIONAR DADOS !!!');
+        console.error(error.message);
         res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
     }
 });
+
 
 
 // Rota para fazer login de um utilizador
