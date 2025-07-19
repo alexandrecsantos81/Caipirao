@@ -46,7 +46,9 @@ const creds = process.env.GOOGLE_CREDS_V2 ?
 
 const auth = new google.auth.GoogleAuth({
     credentials: creds,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    // LINHA NOVA E MAIS EXPLÍCITA
+    scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/drive.file'],
+
 } );
 
 // --- ROTAS DA API (Dados) ---
