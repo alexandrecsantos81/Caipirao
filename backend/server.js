@@ -288,33 +288,65 @@ function verifyToken(req, res, next) {
     });
 }
 
-// Rota para registar um novo utilizador
-app.post('/auth/register', async (req, res) => {
-    const { email, senha } = req.body;
+// Rota para adicionar dados a uma aba (VERSÃO FINAL COM PRODUTOS)
+app.post('/api/:sheetName', verifyToken, async (req, res) => {
+    let { sheetName } = req.params;
+    const data = req.body;
+    const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
+    const actualSheetName = allowedSheets[sheetName.toLowerCase()];
 
-    if (!email || !senha) {
-        return res.status(400).send('Email e senha são obrigatórios.');
+    if (!actualSheetName) {
+        return res.status(400).send('Nome da planilha inválido.');
     }
 
     try {
         const sheets = google.sheets({ version: 'v4', auth });
-        const saltRounds = 10;
-        const senhaHash = await bcrypt.hash(senha, saltRounds);
-        const newRow = [email, senhaHash];
+        let newRow = [];
+
+        // Lógica específica para cada aba para garantir a ordem e o formato corretos
+        if (actualSheetName === 'Clientes') {
+            newRow = [
+                data['ID'] || '',
+                data['Nome'] || '',
+                data['Contato'] || '',
+                data['Endereço'] || ''
+            ];
+        } else if (actualSheetName === 'Produtos') {
+            // LÓGICA NOVA E ESPECÍFICA PARA PRODUTOS
+            newRow = [
+                data['ID'] || '',
+                data['Nome'] || '',
+                data['Descrição'] || '',
+                // Garante que o preço seja tratado como um número
+                data['Preço'] ? parseFloat(data['Preço']) : '' 
+            ];
+        } else if (actualSheetName === '_Movimentacoes') {
+            const headerResponse = await sheets.spreadsheets.values.get({
+                spreadsheetId: SPREADSHEET_ID,
+                range: `${actualSheetName}!1:1`,
+            });
+            const headers = headerResponse.data.values[0];
+            newRow = headers.map(header => data[header] || '');
+        } else {
+            return res.status(400).send('Tipo de entidade não suportado para adição.');
+        }
 
         await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
-            range: 'Utilizadores',
-            valueInputOption: 'USER_ENTERED',
+            range: actualSheetName,
+            // Importante: USER_ENTERED interpreta o número e aplica o formato da célula
+            valueInputOption: 'USER_ENTERED', 
             resource: { values: [newRow] },
         });
 
-        res.status(201).send('Utilizador registado com sucesso!');
+        res.status(201).send('Dados adicionados com sucesso!');
+
     } catch (error) {
-        console.error('Erro ao registar utilizador:', error.message);
-        res.status(500).send('Erro no servidor ao registar o utilizador.');
+        console.error(`Erro ao adicionar dados na aba ${actualSheetName}:`, error.message);
+        res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
     }
 });
+
 
 // Rota para fazer login de um utilizador
 app.post('/auth/login', async (req, res) => {
