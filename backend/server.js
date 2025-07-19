@@ -202,34 +202,43 @@ app.delete('/api/:sheetName', verifyToken, async (req, res) => {
 });
 
 
-// Rota para atualizar (editar) uma linha (VERSÃO FINALÍSSIMA E COMPLETA)
-app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
-    const { sheetName, rowIndex } = req.params;
+// Rota para atualizar (editar) uma linha (VERSÃO FINALÍSSIMA POR ID)
+app.put('/api/:sheetName', verifyToken, async (req, res) => {
+    const { sheetName } = req.params;
     const updatedData = req.body;
-    const { sheetId } = updatedData;
-    const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
-    const actualSheetName = allowedSheets[sheetName.toLowerCase()];
+    const { id, sheetId } = updatedData; // Pegamos o ID do corpo da requisição
 
     if (!actualSheetName) { return res.status(400).send('Nome da planilha inválido.'); }
+    if (!id) { return res.status(400).send('O ID do registo é obrigatório para a edição.'); }
     if (sheetId === undefined) { return res.status(400).send('O ID da aba (sheetId) é necessário para a edição.'); }
 
     try {
         const sheets = google.sheets({ version: 'v4', auth });
+        
+        // 1. ENCONTRAR A LINHA FÍSICA QUE CORRESPONDE AO ID
+        const getRows = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: actualSheetName });
+        const allData = getRows.data.values || [];
+        const headers = allData[0];
+        const idColumnName = actualSheetName === '_Movimentacoes' ? 'ID Mov.' : 'ID';
+        const idColumnIndex = headers.findIndex(header => header === idColumnName);
+
+        if (idColumnIndex === -1) { return res.status(500).send(`A coluna "${idColumnName}" não foi encontrada.`); }
+
+        let targetRowIndex = -1;
+        for (let i = 1; i < allData.length; i++) {
+            if (allData[i][idColumnIndex] === id) {
+                targetRowIndex = i;
+                break;
+            }
+        }
+
+        if (targetRowIndex === -1) { return res.status(404).send(`Registo com ID "${id}" não encontrado.`); }
+
+        // 2. PREPARAR OS DADOS PARA ATUALIZAÇÃO
         let updatedRowValues = [];
         let fieldsToUpdate = 'userEnteredValue';
 
-        const headerResponse = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `${actualSheetName}!1:1` });
-        const headers = headerResponse.data.values[0];
-
-        // LÓGICA CORRIGIDA E COMPLETA
-        if (actualSheetName === 'Clientes') {
-            updatedRowValues = [ { userEnteredValue: { stringValue: updatedData['ID'] || '' } }, { userEnteredValue: { stringValue: updatedData['Nome'] || '' } }, { userEnteredValue: { stringValue: updatedData['Contato'] || '' } }, { userEnteredValue: { stringValue: updatedData['Endereço'] || '' } } ];
-        } else if (actualSheetName === 'Produtos') {
-            const preco = updatedData['Preço'] ? String(updatedData['Preço']).replace(',', '.') : '';
-            updatedRowValues = [ { userEnteredValue: { stringValue: updatedData['ID'] || '' } }, { userEnteredValue: { stringValue: updatedData['Nome'] || '' } }, { userEnteredValue: { stringValue: updatedData['Descrição'] || '' } }, { userEnteredValue: { numberValue: preco ? parseFloat(preco) : null }, userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"R$"#,##0.00' } } } ];
-            fieldsToUpdate = 'userEnteredValue,userEnteredFormat';
-        } else if (actualSheetName === '_Movimentacoes') {
-            // LÓGICA RESTAURADA PARA MOVIMENTAÇÕES
+        if (actualSheetName === '_Movimentacoes') {
             updatedRowValues = headers.map(header => {
                 const value = updatedData[header] || '';
                 if (header === 'Valor') {
@@ -239,14 +248,25 @@ app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
                 return { userEnteredValue: { stringValue: value.toString() } };
             });
             fieldsToUpdate = 'userEnteredValue,userEnteredFormat';
+        } else { // Lógica para Clientes e Produtos
+             updatedRowValues = headers.map(header => {
+                const value = updatedData[header] || '';
+                 if (header === 'Preço') {
+                    const precoNumerico = value ? parseFloat(String(value).replace(',', '.')) : null;
+                    return { userEnteredValue: { numberValue: precoNumerico }, userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"R$"#,##0.00' } } };
+                }
+                return { userEnteredValue: { stringValue: value.toString() } };
+            });
+            fieldsToUpdate = 'userEnteredValue,userEnteredFormat';
         }
 
+        // 3. EXECUTAR A ATUALIZAÇÃO NA LINHA CORRETA
         await sheets.spreadsheets.batchUpdate({
             spreadsheetId: SPREADSHEET_ID,
             resource: {
                 requests: [{
                     updateCells: {
-                        start: { sheetId: parseInt(sheetId, 10), rowIndex: parseInt(rowIndex, 10) + 1, columnIndex: 0 },
+                        start: { sheetId: parseInt(sheetId, 10), rowIndex: targetRowIndex, columnIndex: 0 },
                         rows: [{ values: updatedRowValues }],
                         fields: fieldsToUpdate
                     }

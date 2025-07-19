@@ -249,12 +249,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-    // VERSÃO MELHORADA DO MODAL DE EDIÇÃO
-    function openEditModal(entity, rowIndex, data, sheetId) {
-        currentEditInfo = { entity, rowIndex, sheetId };
+    // VERSÃO FINAL DA FUNÇÃO openEditModal
+    function openEditModal(entity, rowData, sheetId) { // Recebe o objeto de dados (rowData) em vez do índice
+        
+        // Guarda a informação correta, incluindo o ID único do registro
+        const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
+        currentEditInfo = { 
+            entity, 
+            sheetId,
+            id: rowData[idKey] // Guarda o ID único (ex: "1001" ou "P02")
+        };
+
         editFormFields.innerHTML = '';
 
-        for (const key in data) {
+        for (const key in rowData) {
+            // Pula o sheetId se ele existir nos dados (não deve, mas é uma boa prática)
             if (key.toLowerCase() === 'sheetid') continue;
             
             const fieldWrapper = document.createElement('div');
@@ -264,14 +273,13 @@ document.addEventListener('DOMContentLoaded', () => {
             label.textContent = key;
             
             const input = document.createElement('input');
-            let currentValue = data[key];
+            let currentValue = rowData[key];
 
-            // Lógica especial para campos de preço/valor
+            // Lógica especial para campos de preço/valor para limpar o formato monetário
             if (key.toLowerCase() === 'preço' || key.toLowerCase() === 'valor') {
-                // Remove o "R$" e outros caracteres não numéricos, troca vírgula por ponto
                 currentValue = String(currentValue)
                     .replace(/[^0-9,.]/g, '') // Remove tudo que não for número, vírgula ou ponto
-                    .replace(',', '.');      // Garante que o separador seja ponto
+                    .replace(',', '.');      // Garante que o separador decimal seja ponto
                 
                 input.type = 'text';
                 input.inputMode = 'decimal';
@@ -294,6 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modalBackdrop.classList.add('flex');
         setTimeout(() => modal.classList.remove('-translate-y-full'), 50);
     }
+
 
     function closeEditModal() {
         modal.classList.add('-translate-y-full');
