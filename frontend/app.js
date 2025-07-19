@@ -326,13 +326,17 @@ editForm.addEventListener('submit', async (event) => {
     const formData = new FormData(editForm);
     const updatedData = Object.fromEntries(formData.entries());
     
+    // CORREÇÃO: Pega 'entity', 'sheetId' e 'id' diretamente de 'currentEditInfo'
     const { entity, sheetId, id } = currentEditInfo; 
     
-    updatedData.id = id; // Adiciona o ID que não vem do formulário (pois está desabilitado)
+    // Adiciona o ID ao corpo da requisição, pois ele não vem do formulário
+    updatedData.id = id;
     
+    // Validação para garantir que as informações essenciais existem
     if (!entity || !id) {
         hideLoader();
         showNotification('Erro crítico: Informação da entidade ou ID não encontrada.', 'error');
+        console.error("Erro de validação no frontend:", currentEditInfo); // Log para depuração
         return;
     }
 
@@ -352,6 +356,7 @@ editForm.addEventListener('submit', async (event) => {
         showNotification('Registo atualizado com sucesso!', 'success');
         closeEditModal();
         
+        // Recarrega os dados da aba correta
         if (entity === 'clientes') { fetchClientes(); } 
         else if (entity === 'produtos') { fetchProdutos(); } 
         else if (entity === 'movimentacoes') { fetchMovimentacoes(); }
