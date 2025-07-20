@@ -297,7 +297,7 @@ function verifyToken(req, res, next) {
     });
 }
 
-// VERSÃO FINAL, EXPLÍCITA E CORRIGIDA DA ROTA DE ADIÇÃO (POST)
+// VERSÃO FINAL, ESTÁVEL E EXPLÍCITA DA ROTA DE ADIÇÃO (POST)
 app.post('/api/:sheetName', verifyToken, async (req, res) => {
     const { sheetName } = req.params;
     const data = req.body;
@@ -312,7 +312,8 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
         const sheets = google.sheets({ version: 'v4', auth });
         let newRow = [];
 
-        // Lógica explícita para cada entidade, garantindo a ordem da planilha
+        // Lógica explícita e segura, baseada na que já funciona para edição.
+        // Garante que a ordem das colunas na planilha seja respeitada.
         if (actualSheetName === 'Clientes') {
             // Ordem da planilha: ID, Nome, Contato, Endereço
             newRow = [
@@ -342,6 +343,7 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
                 data.Observações || ''
             ];
         } else {
+            // Esta condição nunca deve ser atingida se a validação inicial funcionar.
             return res.status(400).send('Tipo de entidade não suportado para adição.');
         }
 
@@ -359,7 +361,6 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
         res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
     }
 });
-
 
 
 
