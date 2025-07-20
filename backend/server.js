@@ -82,7 +82,7 @@ app.get('/api/:sheetName', verifyToken, async (req, res) => {
     }
 });
 
-// VERSÃO COM GERAÇÃO AUTOMÁTICA DE ID
+// VERSÃO FINAL COM CORREÇÃO PARA MOVIMENTAÇÕES
 app.post('/api/:sheetName', verifyToken, async (req, res) => {
     const { sheetName } = req.params;
     const data = req.body;
@@ -97,36 +97,36 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
         const sheets = google.sheets({ version: 'v4', auth });
         let newRow = [];
 
-        // ================== LÓGICA DE GERAÇÃO DE ID ==================
-        // Gera um ID único baseado no tempo e um número aleatório.
         const generatedId = Date.now().toString().slice(-6) + Math.floor(Math.random() * 100);
-        // =============================================================
 
         if (actualSheetName === 'Clientes') {
             newRow = [
-                generatedId, // ID Automático
+                generatedId,
                 data.Nome || '',
                 data.Contato || '',
                 data.Endereço || ''
             ];
         } else if (actualSheetName === 'Produtos') {
             newRow = [
-                generatedId, // ID Automático
+                generatedId,
                 data.Nome || '',
                 data.Descrição || '',
                 data.Preço ? parseFloat(String(data.Preço).replace(',', '.')) : ''
             ];
         } else if (actualSheetName === '_Movimentacoes') {
+            // ================== CORREÇÃO APLICADA AQUI ==================
+            // O backend agora espera as chaves corretas do formulário de movimentações
             newRow = [
-                generatedId, // ID Automático
+                generatedId,
                 data.Data || '',
                 data['Tipo (Entrada/Saída)'] || '',
                 data.Categoria || '',
-                data.Descrição || '',
+                data.Descrição || '', // Corrigido para corresponder ao name="Descrição"
                 data.Valor ? parseFloat(String(data.Valor).replace(',', '.')) : '',
                 data.Responsável || '',
                 data.Observações || ''
             ];
+            // ============================================================
         } else {
             return res.status(400).send('Tipo de entidade não suportado para adição.');
         }
