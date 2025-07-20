@@ -82,66 +82,68 @@ app.get('/api/:sheetName', verifyToken, async (req, res) => {
     }
 });
 
-    // VERSÃO FINAL E CORRIGIDA DA ROTA DE ADIÇÃO (POST)
-    app.post('/api/:sheetName', verifyToken, async (req, res) => {
-        const { sheetName } = req.params;
-        const data = req.body;
-        const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
-        const actualSheetName = allowedSheets[sheetName.toLowerCase()];
+// VERSÃO FINAL, CORRIGIDA E ALINHADA COM O HTML
+app.post('/api/:sheetName', verifyToken, async (req, res) => {
+    const { sheetName } = req.params;
+    const data = req.body;
+    const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
+    const actualSheetName = allowedSheets[sheetName.toLowerCase()];
 
-        if (!actualSheetName) {
-            return res.status(400).send('Nome da planilha inválido.');
+    if (!actualSheetName) {
+        return res.status(400).send('Nome da planilha inválido.');
+    }
+
+    try {
+        const sheets = google.sheets({ version: 'v4', auth });
+        let newRow = [];
+
+        if (actualSheetName === 'Clientes') {
+            newRow = [
+                data.ID || '',
+                data.Nome || '',
+                data.Contato || '',
+                data.Endereço || ''
+            ];
+        } else if (actualSheetName === 'Produtos') {
+            // ================== CORREÇÃO APLICADA AQUI ==================
+            // Agora o backend espera as chaves corretas: ID, Nome, Descrição, Preço
+            newRow = [
+                data.ID || '',
+                data.Nome || '',
+                data.Descrição || '',
+                data.Preço ? parseFloat(String(data.Preço).replace(',', '.')) : ''
+            ];
+            // ============================================================
+        } else if (actualSheetName === '_Movimentacoes') {
+            newRow = [
+                data['ID Mov.'] || '',
+                data.Data || '',
+                data['Tipo (Entrada/Saída)'] || '',
+                data.Categoria || '',
+                data.Descrição || '',
+                data.Valor ? parseFloat(String(data.Valor).replace(',', '.')) : '',
+                data.Responsável || '',
+                data.Observações || ''
+            ];
+        } else {
+            return res.status(400).send('Tipo de entidade não suportado para adição.');
         }
 
-        try {
-            const sheets = google.sheets({ version: 'v4', auth });
-            let newRow = [];
+        await sheets.spreadsheets.values.append({
+            spreadsheetId: SPREADSHEET_ID,
+            range: actualSheetName,
+            valueInputOption: 'USER_ENTERED',
+            resource: { values: [newRow] },
+        });
 
-            // Lógica explícita com chaves padronizadas
-            if (actualSheetName === 'Clientes') {
-                newRow = [
-                    data.ID || '',
-                    data.Nome || '',
-                    data.Contato || '',
-                    data.Endereço || ''
-                ];
-            } else if (actualSheetName === 'Produtos') {
-                // CORREÇÃO APLICADA AQUI
-                newRow = [
-                    data.id_produto || '',
-                    data.nome_produto || '',
-                    data.descricao_produto || '',
-                    data.preco_produto ? parseFloat(String(data.preco_produto).replace(',', '.')) : ''
-                ];
-            } else if (actualSheetName === '_Movimentacoes') {
-                newRow = [
-                    data.id_mov || '',
-                    data.data || '',
-                    data.tipo || '',
-                    data.categoria || '',
-                    data.descricao || '',
-                    data.valor ? parseFloat(String(data.valor).replace(',', '.')) : '',
-                    data.responsavel || '',
-                    data.observacoes || ''
-                ];
-            } else {
-                return res.status(400).send('Tipo de entidade não suportado para adição.');
-            }
+        res.status(201).send('Dados adicionados com sucesso!');
 
-            await sheets.spreadsheets.values.append({
-                spreadsheetId: SPREADSHEET_ID,
-                range: actualSheetName,
-                valueInputOption: 'USER_ENTERED',
-                resource: { values: [newRow] },
-            });
+    } catch (error) {
+        console.error(`Erro ao adicionar dados na aba ${actualSheetName}:`, error.message);
+        res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
+    }
+});
 
-            res.status(201).send('Dados adicionados com sucesso!');
-
-        } catch (error) {
-            console.error(`Erro ao adicionar dados na aba ${actualSheetName}:`, error.message);
-            res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
-        }
-    });
 
 // Rota para apagar uma linha (VERSÃO FINALÍSSIMA CORRIGIDA)
 app.delete('/api/:sheetName', verifyToken, async (req, res) => {
