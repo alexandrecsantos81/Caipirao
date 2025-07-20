@@ -375,12 +375,26 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => { window.location.href = 'login.html'; }, 1000);
     });
 
-    // LÓGICA UNIFICADA E CORRIGIDA PARA SUBMISSÃO DE FORMULÁRIOS DE ADIÇÃO
-    document.querySelectorAll('form[id^="add-"]').forEach(form => {
-        const entity = form.id.replace('add-', '').replace('-form', '');
-        form.dataset.entity = entity;
-        form.addEventListener('submit', handleAddFormSubmit);
-    });
+// SUBSTITUA A LÓGICA DE SUBMISSÃO ANTIGA POR ESTA VERSÃO CORRIGIDA
+
+document.querySelectorAll('form[id^="add-"]').forEach(form => {
+    // Extrai a entidade do ID do formulário, ex: "movimentacao", "cliente", "produto"
+    let entityName = form.id.replace('add-', '').replace('-form', '');
+
+    // CORREÇÃO: Converte o nome da entidade para o plural para corresponder à rota da API
+    if (entityName.endsWith('o') || entityName.endsWith('e')) {
+        entityName += 's'; // cliente -> clientes, produto -> produtos
+    } else if (entityName === 'movimentacao') {
+        entityName = 'movimentacoes'; // movimentacao -> movimentacoes
+    }
+    
+    // Armazena o nome correto (no plural) no dataset do formulário
+    form.dataset.entity = entityName;
+    
+    // Adiciona o listener de submissão
+    form.addEventListener('submit', handleAddFormSubmit);
+});
+
 
     editForm.addEventListener('submit', handleEditFormSubmit);
     closeModalBtn.addEventListener('click', closeEditModal);
