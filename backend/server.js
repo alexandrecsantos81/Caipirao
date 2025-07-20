@@ -82,61 +82,81 @@ app.get('/api/:sheetName', verifyToken, async (req, res) => {
     }
 });
 
-// VERSÃO DE DEPURAÇÃO DA ROTA DE ADIÇÃO (POST)
+// SUBSTITUA A SUA ROTA POST ANTIGA POR ESTA VERSÃO COMPLETA E CORRIGIDA
 app.post('/api/:sheetName', verifyToken, async (req, res) => {
     const { sheetName } = req.params;
-    const data = req.body;
+    const receivedData = req.body; // Dados que vêm do formulário do frontend
+
     const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
     const actualSheetName = allowedSheets[sheetName.toLowerCase()];
 
-    // --- LOG DE DEPURAÇÃO 1: DADOS RECEBIDOS ---
-    console.log(`--- TENTATIVA DE ADIÇÃO NA ABA: ${actualSheetName} ---`);
-    console.log('Dados recebidos do frontend (req.body):', data);
-
     if (!actualSheetName) {
-        return res.status(400).send('Nome da planilha inválido.');
+        return res.status(400).send('Erro: Nome da planilha inválido.');
     }
+
+    console.log(`--- INICIANDO ADIÇÃO NA ABA: ${actualSheetName} ---`);
+    console.log('Dados recebidos do frontend:', receivedData);
 
     try {
         const sheets = google.sheets({ version: 'v4', auth });
-        let newRow = [];
 
-        const generatedId = Date.now().toString().slice(-6) + Math.floor(Math.random() * 100);
-        
-        // --- LOG DE DEPURAÇÃO 2: ID GERADO ---
-        console.log('ID gerado automaticamente:', generatedId);
+        // Passo 1: Ler os cabeçalhos da planilha para saber a ordem correta das colunas
+        const headerResponse = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${actualSheetName}!1:1`, // Pega apenas a primeira linha (cabeçalhos)
+        });
 
-        // Lógica explícita que estava causando o problema
-        if (actualSheetName === 'Clientes') {
-            newRow = [ generatedId, data.Nome || '', data.Contato || '', data.Endereço || '' ];
-        } else if (actualSheetName === 'Produtos') {
-            newRow = [ generatedId, data.Nome || '', data.Descrição || '', data.Preço ? parseFloat(String(data.Preço).replace(',', '.')) : '' ];
-        } else if (actualSheetName === '_Movimentacoes') {
-            newRow = [ generatedId, data.Data || '', data['Tipo (Entrada/Saída)'] || '', data.Categoria || '', data.Descrição || '', data.Valor ? parseFloat(String(data.Valor).replace(',', '.')) : '', data.Responsável || '', data.Observações || '' ];
-        } else {
-            return res.status(400).send('Tipo de entidade não suportado para adição.');
+        const headers = headerResponse.data.values[0];
+        if (!headers || headers.length === 0) {
+            return res.status(500).send('Erro: Não foi possível ler os cabeçalhos da planilha de destino.');
         }
+        console.log('Cabeçalhos lidos da planilha:', headers);
 
-        // --- LOG DE DEPURAÇÃO 3: LINHA A SER INSERIDA ---
-        console.log('Linha montada para ser inserida na planilha:', newRow);
+        // Passo 2: Gerar um ID único para a nova linha
+        const generatedId = Date.now().toString().slice(-6) + Math.floor(Math.random() * 100);
+        const idColumnName = actualSheetName === '_Movimentacoes' ? 'ID Mov.' : 'ID';
 
+        // Passo 3: Construir a nova linha (newRow) dinamicamente, na ordem correta dos cabeçalhos
+        const newRow = headers.map(header => {
+            // Trata a coluna de ID
+            if (header === idColumnName) {
+                return generatedId;
+            }
+
+            // Procura a chave correspondente nos dados recebidos (ignorando maiúsculas/minúsculas)
+            const receivedDataKey = Object.keys(receivedData).find(key => key.toLowerCase() === header.toLowerCase());
+            
+            if (receivedDataKey) {
+                const value = receivedData[receivedDataKey];
+                // Converte valores numéricos (Valor, Preço) para o formato correto
+                if ((header.toLowerCase() === 'valor' || header.toLowerCase() === 'preço') && value) {
+                    return parseFloat(String(value).replace(',', '.'));
+                }
+                return value; // Retorna o valor como está para outras colunas
+            }
+
+            return ''; // Retorna uma string vazia se não houver dado correspondente
+        });
+
+        console.log('Linha montada para inserção:', newRow);
+
+        // Passo 4: Adicionar a linha construída à planilha
         await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
             range: actualSheetName,
-            valueInputOption: 'USER_ENTERED',
+            valueInputOption: 'USER_ENTERED', // Permite que o Google Sheets interprete os dados (ex: formate como moeda)
             resource: { values: [newRow] },
         });
 
-        console.log('SUCESSO: Dados adicionados na API do Google.');
-        res.status(201).send('Dados adicionados com sucesso!');
+        console.log('--- SUCESSO: Dados adicionados na planilha. ---');
+        res.status(201).send({ message: 'Dados adicionados com sucesso!', id: generatedId });
 
     } catch (error) {
-        // --- LOG DE DEPURAÇÃO 4: ERRO DA API ---
-        console.error('!!! ERRO AO TENTAR ADICIONAR DADOS !!!');
-        console.error(error.message);
-        res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
+        console.error(`!!! ERRO AO ADICIONAR DADOS NA ABA ${actualSheetName} !!!`, error.message);
+        res.status(500).send(`Erro no servidor ao adicionar dados: ${error.message}`);
     }
 });
+
 
 
 
