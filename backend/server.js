@@ -82,7 +82,7 @@ app.get('/api/:sheetName', verifyToken, async (req, res) => {
     }
 });
 
-// VERSÃO FINAL, CORRIGIDA E ALINHADA COM O HTML
+// VERSÃO COM GERAÇÃO AUTOMÁTICA DE ID
 app.post('/api/:sheetName', verifyToken, async (req, res) => {
     const { sheetName } = req.params;
     const data = req.body;
@@ -97,26 +97,28 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
         const sheets = google.sheets({ version: 'v4', auth });
         let newRow = [];
 
+        // ================== LÓGICA DE GERAÇÃO DE ID ==================
+        // Gera um ID único baseado no tempo e um número aleatório.
+        const generatedId = Date.now().toString().slice(-6) + Math.floor(Math.random() * 100);
+        // =============================================================
+
         if (actualSheetName === 'Clientes') {
             newRow = [
-                data.ID || '',
+                generatedId, // ID Automático
                 data.Nome || '',
                 data.Contato || '',
                 data.Endereço || ''
             ];
         } else if (actualSheetName === 'Produtos') {
-            // ================== CORREÇÃO APLICADA AQUI ==================
-            // Agora o backend espera as chaves corretas: ID, Nome, Descrição, Preço
             newRow = [
-                data.ID || '',
+                generatedId, // ID Automático
                 data.Nome || '',
                 data.Descrição || '',
                 data.Preço ? parseFloat(String(data.Preço).replace(',', '.')) : ''
             ];
-            // ============================================================
         } else if (actualSheetName === '_Movimentacoes') {
             newRow = [
-                data['ID Mov.'] || '',
+                generatedId, // ID Automático
                 data.Data || '',
                 data['Tipo (Entrada/Saída)'] || '',
                 data.Categoria || '',
@@ -143,6 +145,7 @@ app.post('/api/:sheetName', verifyToken, async (req, res) => {
         res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
     }
 });
+
 
 
 // Rota para apagar uma linha (VERSÃO FINALÍSSIMA CORRIGIDA)
