@@ -87,6 +87,15 @@
                                 <div><label for="data" class="block text-sm font-medium">Data</label><input type="date" id="data" name="Data" required class="form-input"></div>
                                 <div><label for="tipo" class="block text-sm font-medium">Tipo</label><select id="tipo" name="Tipo (Entrada/Saída)" required class="form-input"><option value="ENTRADA">ENTRADA</option><option value="SAÍDA">SAÍDA</option></select></div>
                                 <div><label for="categoria" class="block text-sm font-medium">Categoria</label><input type="text" id="categoria" name="Categoria" required class="form-input" placeholder="Ex: Venda"></div>
+                                
+                                <div id="cliente-field-wrapper" class="hidden">
+                                    <label for="cliente-movimentacao" class="block text-sm font-medium">Cliente</label>
+                                    <select id="cliente-movimentacao" name="Cliente" class="form-input">
+                                        <option value="">Selecione um cliente</option>
+                                        <!-- Os clientes serão populados aqui pelo JavaScript -->
+                                    </select>
+                                </div>
+                                                        
                                 <div class="md:col-span-2"><label for="descricao" class="block text-sm font-medium">Descrição</label><input type="text" id="descricao" name="Descrição" required class="form-input" placeholder="Ex: Venda de frango"></div>
                                 <div><label for="valor" class="block text-sm font-medium">Valor</label><input type="text" inputmode="decimal" id="valor" name="Valor" required class="form-input" placeholder="Ex: 150,00"></div>
                                 <div><label for="responsavel" class="block text-sm font-medium">Responsável</label><input type="text" id="responsavel" name="Responsável" required class="form-input" placeholder="Ex: Alexandre"></div>
