@@ -426,6 +426,39 @@ logoutBtn.addEventListener('click', () => {
 });
 
 // =====================================================================
+// LÓGICA DE CONTROLO DO TEMA ESCURO
+// =====================================================================
+const themeToggleBtn = document.getElementById('theme-toggle-btn' );
+const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+
+// Função para aplicar o tema
+const applyTheme = (isDark) => {
+    if (isDark) {
+        document.documentElement.classList.add('dark');
+        themeToggleLightIcon.classList.remove('hidden');
+        themeToggleDarkIcon.classList.add('hidden');
+    } else {
+        document.documentElement.classList.remove('dark');
+        themeToggleLightIcon.classList.add('hidden');
+        themeToggleDarkIcon.classList.remove('hidden');
+    }
+};
+
+// Verifica a preferência guardada ou a do sistema ao carregar
+const storedTheme = localStorage.getItem('theme');
+const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+const isDarkMode = storedTheme === 'dark' || (storedTheme === null && systemPrefersDark);
+applyTheme(isDarkMode);
+
+// Adiciona o listener ao botão
+themeToggleBtn.addEventListener('click', () => {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    applyTheme(isDark);
+});
+
+// =====================================================================
 // NOVA LÓGICA CENTRALIZADA PARA ADICIONAR LISTENERS (FAÇA ISSO APENAS UMA VEZ)
 // =====================================================================
 document.querySelectorAll('form[id^="add-"]').forEach(form => {
