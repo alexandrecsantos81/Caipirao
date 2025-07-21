@@ -32,7 +32,7 @@ const corsOptions = {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Garante que todos os métodos HTTP são permitidos
     credentials: true // Se você precisar lidar com cookies ou headers de autorização
 };
-app.options('*', cors(corsOptions));
+
 app.use(cors(corsOptions));
 app.use(express.json());
 
