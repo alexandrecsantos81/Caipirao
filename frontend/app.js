@@ -184,12 +184,15 @@ function openEditModal(entity, rowData, sheetId) {
         if (key === 'Tipo (Entrada/Saída)') {
             input = document.createElement('select');
             input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm';
-            ['Entrada', 'Saída'].forEach(opt => {
+            
+            // Use os valores em MAIÚSCULAS para corresponder aos dados
+            ['ENTRADA', 'SAÍDA'].forEach(opt => {
                 const option = document.createElement('option');
                 option.value = option.textContent = opt;
                 input.appendChild(option);
             });
-            input.value = rowData[key];
+            input.value = rowData[key]; // Agora 'ENTRADA' irá corresponder a uma option
+            
         } else {
             input = document.createElement('input');
             input.type = 'text';
@@ -351,26 +354,41 @@ async function deleteRow(entity, rowData, sheetId) {
         container.appendChild(table);
     }
 
-    // --- LÓGICA DO DASHBOARD ---
-    function formatCurrency(value) { return parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
-    function updateDashboard(data) {
-        let totalEntradas = 0, totalSaidas = 0;
-        const categoryTotals = {};
-        if (Array.isArray(data)) {
-            data.forEach(mov => {
-                if (mov && typeof mov === 'object') {
-                    const valor = parseFloat(String(mov.Valor || '0').replace(/[^0-9,.]/g, '').replace(',', '.')) || 0;
-                    if (mov['Tipo (Entrada/Saída)'] === 'Entrada') totalEntradas += valor;
-                    else if (mov['Tipo (Entrada/Saída)'] === 'Saída') totalSaidas += valor;
-                    if (mov.Categoria) categoryTotals[mov.Categoria] = (categoryTotals[mov.Categoria] || 0) + valor;
+// --- LÓGICA DO DASHBOARD ---
+function formatCurrency(value) { return parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+// SUBSTITUA A SUA FUNÇÃO updateDashboard POR ESTA VERSÃO CORRIGIDA
+function updateDashboard(data) {
+    let totalEntradas = 0, totalSaidas = 0;
+    const categoryTotals = {};
+
+    if (Array.isArray(data)) {
+        data.forEach(mov => {
+            if (mov && typeof mov === 'object') {
+                const valor = parseFloat(String(mov.Valor || '0').replace(/[^0-9,.]/g, '').replace(',', '.')) || 0;
+                
+                // --- CORREÇÃO APLICADA AQUI ---
+                // Converte o tipo para minúsculas antes de comparar para ignorar case
+                const tipoMovimentacao = (mov['Tipo (Entrada/Saída)'] || '').toLowerCase();
+
+                if (tipoMovimentacao === 'entrada') {
+                    totalEntradas += valor;
+                } else if (tipoMovimentacao === 'saída') {
+                    totalSaidas += valor;
                 }
-            });
-        }
-        document.getElementById('total-entradas').textContent = formatCurrency(totalEntradas);
-        document.getElementById('total-saidas').textContent = formatCurrency(totalSaidas);
-        document.getElementById('saldo-atual').textContent = formatCurrency(totalEntradas - totalSaidas);
-        updateChart(categoryTotals);
+                // --------------------------------
+
+                if (mov.Categoria) {
+                    // O cálculo do gráfico de categorias já estava correto
+                    categoryTotals[mov.Categoria] = (categoryTotals[mov.Categoria] || 0) + valor;
+                }
+            }
+        });
     }
+    document.getElementById('total-entradas').textContent = formatCurrency(totalEntradas);
+    document.getElementById('total-saidas').textContent = formatCurrency(totalSaidas);
+    document.getElementById('saldo-atual').textContent = formatCurrency(totalEntradas - totalSaidas);
+    updateChart(categoryTotals);
+}
 
     function updateChart(categoryData) {
         if (categoryChart) categoryChart.destroy();
