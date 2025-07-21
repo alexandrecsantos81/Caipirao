@@ -365,59 +365,59 @@ async function handleAddFormSubmit(event) { // 1. Adicione 'async' aqui
         });
     }
 
-    // --- EVENT LISTENERS E INICIALIZAÇÃO ---
-    navLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const pageId = link.getAttribute('href').substring(1);
-            window.location.hash = pageId;
-            showPage(pageId);
-        });
+// --- EVENT LISTENERS E INICIALIZAÇÃO ---
+navLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const pageId = link.getAttribute('href').substring(1);
+        window.location.hash = pageId;
+        // A FUNÇÃO showPage AGORA SÓ MOSTRA A PÁGINA E CARREGA OS DADOS
+        showPage(pageId); 
     });
+});
 
-    logoutBtn.addEventListener('click', () => {
-        localStorage.removeItem('jwtToken');
-        showNotification('Sessão terminada com sucesso!');
-        setTimeout(() => { window.location.href = 'login.html'; }, 1000);
-    });
+logoutBtn.addEventListener('click', () => {
+    localStorage.removeItem('jwtToken');
+    showNotification('Sessão terminada com sucesso!');
+    setTimeout(() => { window.location.href = 'login.html'; }, 1000);
+});
 
-// SUBSTITUA A LÓGICA DE SUBMISSÃO PELA VERSÃO FINAL E CORRIGIDA
-
+// =====================================================================
+// NOVA LÓGICA CENTRALIZADA PARA ADICIONAR LISTENERS (FAÇA ISSO APENAS UMA VEZ)
+// =====================================================================
 document.querySelectorAll('form[id^="add-"]').forEach(form => {
     let entityName = form.id.replace('add-', '').replace('-form', '');
 
-    // CORREÇÃO: Trata o caso especial PRIMEIRO
     if (entityName === 'movimentacao') {
-        entityName = 'movimentacoes'; // movimentacao -> movimentacoes
-    } 
-    // A regra geral agora só se aplica aos outros casos
-    else if (entityName.endsWith('o') || entityName.endsWith('e')) {
-        entityName += 's'; // cliente -> clientes, produto -> produtos
+        entityName = 'movimentacoes';
+    } else if (entityName.endsWith('o') || entityName.endsWith('e')) {
+        entityName += 's';
     }
     
     form.dataset.entity = entityName;
+    
+    // A linha abaixo é a mais importante. Ela adiciona o listener uma única vez.
     form.addEventListener('submit', handleAddFormSubmit);
 });
+// =====================================================================
 
 
+editForm.addEventListener('submit', handleEditFormSubmit);
+closeModalBtn.addEventListener('click', closeEditModal);
+cancelEditBtn.addEventListener('click', closeEditModal);
 
-    editForm.addEventListener('submit', handleEditFormSubmit);
-    closeModalBtn.addEventListener('click', closeEditModal);
-    cancelEditBtn.addEventListener('click', closeEditModal);
+// Lógica de filtragem para movimentações
+const searchInput = document.getElementById('search-movimentacoes');
+if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const filteredMovimentacoes = allMovimentacoes.filter(mov => 
+            Object.values(mov).some(value => String(value).toLowerCase().includes(searchTerm))
+        );
+        createTable(document.getElementById('movimentacoes-container'), filteredMovimentacoes, 'movimentacoes', CONFIG.SHEET_IDS.movimentacoes);
+    });
+}
 
-    // Lógica de filtragem para movimentações
-    const searchInput = document.getElementById('search-movimentacoes');
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            const filteredMovimentacoes = allMovimentacoes.filter(mov => 
-                Object.values(mov).some(value => String(value).toLowerCase().includes(searchTerm))
-            );
-            createTable(document.getElementById('movimentacoes-container'), filteredMovimentacoes, 'movimentacoes', CONFIG.SHEET_IDS.movimentacoes);
-        });
-    }
-
-    // INICIALIZAÇÃO DA APLICAÇÃO
-    const initialPage = window.location.hash.substring(1) || 'dashboard';
-    showPage(initialPage);
-});
+// INICIALIZAÇÃO DA APLICAÇÃO
+const initialPage = window.location.hash.substring(1) || 'dashboard';
+showPage(initialPage);
