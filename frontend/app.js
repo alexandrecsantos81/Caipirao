@@ -162,105 +162,130 @@ async function handleAddFormSubmit(event) { // 1. Adicione 'async' aqui
 
 
     // --- LÓGICA DE EDIÇÃO (UPDATE) ---
-    function openEditModal(entity, rowData, sheetId) {
-        const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
-        const idValue = rowData[idKey];
-        if (!idValue) {
-            showNotification('Não é possível editar um registo sem ID.', 'error');
-            return;
-        }
-        currentEditInfo = { entity, sheetId, id: idValue };
-        editFormFields.innerHTML = '';
-
-        for (const key in rowData) {
-            if (key.toLowerCase() === 'sheetid') continue;
-            const fieldWrapper = document.createElement('div');
-            const label = document.createElement('label');
-            label.className = 'block text-sm font-medium text-slate-700';
-            label.textContent = key;
-            let input;
-
-            if (key === 'Tipo (Entrada/Saída)') {
-                input = document.createElement('select');
-                input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm';
-                ['Entrada', 'Saída'].forEach(opt => {
-                    const option = document.createElement('option');
-                    option.value = option.textContent = opt;
-                    input.appendChild(option);
-                });
-                input.value = rowData[key];
-            } else {
-                input = document.createElement('input');
-                input.type = 'text';
-                input.value = rowData[key];
-                input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm';
-            }
-            input.id = `edit-${key}`;
-            input.name = key;
-            if (key === idKey) {
-                input.disabled = true;
-                input.classList.add('bg-slate-100');
-            }
-            fieldWrapper.appendChild(label);
-            fieldWrapper.appendChild(input);
-            editFormFields.appendChild(fieldWrapper);
-        }
-        modalBackdrop.classList.remove('hidden');
+// SUBSTITUA A SUA FUNÇÃO openEditModal POR ESTA
+function openEditModal(entity, rowData, sheetId) {
+    const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
+    const idValue = rowData[idKey];
+    if (!idValue) {
+        showNotification('Não é possível editar um registo sem ID.', 'error');
+        return;
     }
+    currentEditInfo = { entity, sheetId, id: idValue };
+    editFormFields.innerHTML = '';
 
-    function closeEditModal() { modalBackdrop.classList.add('hidden'); }
+    for (const key in rowData) {
+        if (key.toLowerCase() === 'sheetid') continue;
+        const fieldWrapper = document.createElement('div');
+        const label = document.createElement('label');
+        label.className = 'block text-sm font-medium text-slate-700';
+        label.textContent = key;
+        let input;
 
-    async function handleEditFormSubmit(event) {
-        event.preventDefault();
-        showLoader();
-        const formData = new FormData(editForm);
-        const updatedData = Object.fromEntries(formData.entries());
-        const { entity, id } = currentEditInfo;
-        updatedData.id = id;
-
-        try {
-            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}`, {
-                method: 'PUT',
-                headers: getAuthHeaders(),
-                body: JSON.stringify(updatedData)
+        if (key === 'Tipo (Entrada/Saída)') {
+            input = document.createElement('select');
+            input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm';
+            ['Entrada', 'Saída'].forEach(opt => {
+                const option = document.createElement('option');
+                option.value = option.textContent = opt;
+                input.appendChild(option);
             });
-            if (!response.ok) throw new Error(await response.text());
-            showNotification('Registo atualizado com sucesso!', 'success');
-            closeEditModal();
-            reloadDataForEntity(entity);
-        } catch (error) {
-            console.error(`Erro ao atualizar ${entity}:`, error);
-            showNotification(`Falha ao atualizar: ${error.message}`, 'error');
-        } finally {
-            hideLoader();
+            input.value = rowData[key];
+        } else {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.value = rowData[key];
+            input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm';
         }
+        input.id = `edit-${key}`;
+        input.name = key;
+        if (key === idKey) {
+            input.disabled = true;
+            input.classList.add('bg-slate-100');
+        }
+        fieldWrapper.appendChild(label);
+        fieldWrapper.appendChild(input);
+        editFormFields.appendChild(fieldWrapper);
     }
+
+    // --- CORREÇÃO APLICADA AQUI ---
+    // Mostra o fundo escuro
+    modalBackdrop.classList.remove('hidden');
+    modalBackdrop.classList.add('flex'); // Usa flex para centralizar
+    // Traz o modal para a visão
+    modal.classList.remove('-translate-y-full');
+    modal.classList.add('translate-y-0');
+}
+
+// SUBSTITUA A SUA FUNÇÃO closeEditModal POR ESTA
+function closeEditModal() {
+    // Esconde o fundo escuro
+    modalBackdrop.classList.add('hidden');
+    modalBackdrop.classList.remove('flex');
+    // Move o modal para fora da visão para a próxima vez
+    modal.classList.add('-translate-y-full');
+    modal.classList.remove('translate-y-0');
+}
+
+
+// DENTRO DA FUNÇÃO handleEditFormSubmit
+async function handleEditFormSubmit(event) {
+    event.preventDefault();
+    showLoader();
+    const formData = new FormData(editForm);
+    const updatedData = Object.fromEntries(formData.entries());
+    const { entity, id } = currentEditInfo;
+    updatedData.id = id;
+
+    try {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(updatedData)
+        });
+        if (!response.ok) throw new Error(await response.text());
+        showNotification('Registo atualizado com sucesso!', 'success');
+        closeEditModal();
+        
+        // --- CORREÇÃO APLICADA AQUI ---
+        await reloadDataForEntity(entity); 
+
+    } catch (error) {
+        console.error(`Erro ao atualizar ${entity}:`, error);
+        showNotification(`Falha ao atualizar: ${error.message}`, 'error');
+    } finally {
+        hideLoader();
+    }
+}
 
     // --- LÓGICA DE EXCLUSÃO (DELETE) ---
-    async function deleteRow(entity, rowData, sheetId) {
-        const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
-        const uniqueId = rowData[idKey];
-        if (!uniqueId) {
-            showNotification('Não foi possível apagar: o registo não tem um ID.', 'error');
-            return;
-        }
-        if (!confirm(`Tem a certeza de que quer apagar o registo com ID: ${uniqueId}?`)) return;
-        showLoader();
-        try {
-            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}?id=${uniqueId}&sheetId=${sheetId}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders()
-            });
-            if (!response.ok) throw new Error(await response.text());
-            showNotification('Registo apagado com sucesso!', 'success');
-            reloadDataForEntity(entity);
-        } catch (error) {
-            console.error(`Erro ao apagar ${entity}:`, error);
-            showNotification(`Falha ao apagar: ${error.message}`, 'error');
-        } finally {
-            hideLoader();
-        }
+// DENTRO DA FUNÇÃO deleteRow
+async function deleteRow(entity, rowData, sheetId) {
+    const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
+    const uniqueId = rowData[idKey];
+    if (!uniqueId) {
+        showNotification('Não foi possível apagar: o registo não tem um ID.', 'error');
+        return;
     }
+    if (!confirm(`Tem a certeza de que quer apagar o registo com ID: ${uniqueId}?`)) return;
+    showLoader();
+    try {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}?id=${uniqueId}&sheetId=${sheetId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+        if (!response.ok) throw new Error(await response.text());
+        showNotification('Registo apagado com sucesso!', 'success');
+
+        // --- CORREÇÃO APLICADA AQUI ---
+        await reloadDataForEntity(entity);
+
+    } catch (error) {
+        console.error(`Erro ao apagar ${entity}:`, error);
+        showNotification(`Falha ao apagar: ${error.message}`, 'error');
+    } finally {
+        hideLoader();
+    }
+}
 
     // --- FUNÇÕES DE CRIAÇÃO DE INTERFACE (UI) ---
     function formatData(rawData) {
