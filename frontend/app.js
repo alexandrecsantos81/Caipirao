@@ -79,15 +79,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function fetchClientes() { fetchData('clientes', document.getElementById('clientes-container'), CONFIG.SHEET_IDS.clientes); }
     function fetchProdutos() { fetchData('produtos', document.getElementById('produtos-container'), CONFIG.SHEET_IDS.produtos); }
 
-    function reloadDataForEntity(entity) {
-        if (entity === 'dashboard' || entity === 'movimentacoes') {
-            fetchMovimentacoes();
-        } else if (entity === 'clientes') {
-            fetchClientes();
-        } else if (entity === 'produtos') {
-            fetchProdutos();
-        }
+function reloadDataForEntity(entity) {
+    if (entity === 'dashboard' || entity === 'movimentacoes') {
+        // Adicione 'return' para que a promessa seja retornada e 'await' funcione
+        return fetchMovimentacoes(); 
+    } else if (entity === 'clientes') {
+        return fetchClientes();
+    } else if (entity === 'produtos') {
+        return fetchProdutos();
     }
+}
 
     async function fetchData(entity, container, sheetId) {
         showLoader();
@@ -123,37 +124,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- LÓGICA DE ADIÇÃO (CREATE) ---
-    async function handleAddFormSubmit(event) {
-        event.preventDefault(); // Impede o recarregamento da página
-        const form = event.target;
-        const entity = form.dataset.entity;
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
+async function handleAddFormSubmit(event) { // 1. Adicione 'async' aqui
+    event.preventDefault();
+    const form = event.target;
+    const entity = form.dataset.entity;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
 
-        for (const key in data) {
-            if (typeof data[key] === 'string') {
-                data[key] = data[key].toUpperCase();
-            }
-        }
-        
-        showLoader();
-        try {
-            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}`, {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify(data)
-            });
-            if (!response.ok) throw new Error(await response.text());
-            showNotification(`${entity.slice(0, -1)} adicionado com sucesso!`, 'success');
-            form.reset();
-            reloadDataForEntity(entity);
-        } catch (error) {
-            console.error(`Erro ao adicionar ${entity}:`, error);
-            showNotification(`Falha ao adicionar: ${error.message}`, 'error');
-        } finally {
-            hideLoader();
+    for (const key in data) {
+        if (typeof data[key] === 'string') {
+            data[key] = data[key].toUpperCase();
         }
     }
+    
+    showLoader();
+    try {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error(await response.text());
+        
+        showNotification(`${entity.slice(0, -1)} adicionado com sucesso!`, 'success');
+        form.reset();
+        
+        // 2. Use 'await' para esperar a recarga dos dados antes de continuar
+        await reloadDataForEntity(entity); 
+
+    } catch (error) {
+        console.error(`Erro ao adicionar ${entity}:`, error);
+        showNotification(`Falha ao adicionar: ${error.message}`, 'error');
+    } finally {
+        hideLoader();
+    }
+}
+
 
     // --- LÓGICA DE EDIÇÃO (UPDATE) ---
     function openEditModal(entity, rowData, sheetId) {
@@ -375,25 +381,24 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => { window.location.href = 'login.html'; }, 1000);
     });
 
-// SUBSTITUA A LÓGICA DE SUBMISSÃO ANTIGA POR ESTA VERSÃO CORRIGIDA
+// SUBSTITUA A LÓGICA DE SUBMISSÃO PELA VERSÃO FINAL E CORRIGIDA
 
 document.querySelectorAll('form[id^="add-"]').forEach(form => {
-    // Extrai a entidade do ID do formulário, ex: "movimentacao", "cliente", "produto"
     let entityName = form.id.replace('add-', '').replace('-form', '');
 
-    // CORREÇÃO: Converte o nome da entidade para o plural para corresponder à rota da API
-    if (entityName.endsWith('o') || entityName.endsWith('e')) {
-        entityName += 's'; // cliente -> clientes, produto -> produtos
-    } else if (entityName === 'movimentacao') {
+    // CORREÇÃO: Trata o caso especial PRIMEIRO
+    if (entityName === 'movimentacao') {
         entityName = 'movimentacoes'; // movimentacao -> movimentacoes
+    } 
+    // A regra geral agora só se aplica aos outros casos
+    else if (entityName.endsWith('o') || entityName.endsWith('e')) {
+        entityName += 's'; // cliente -> clientes, produto -> produtos
     }
     
-    // Armazena o nome correto (no plural) no dataset do formulário
     form.dataset.entity = entityName;
-    
-    // Adiciona o listener de submissão
     form.addEventListener('submit', handleAddFormSubmit);
 });
+
 
 
     editForm.addEventListener('submit', handleEditFormSubmit);
