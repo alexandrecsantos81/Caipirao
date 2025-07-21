@@ -421,3 +421,5 @@ if (searchInput) {
 // INICIALIZAÇÃO DA APLICAÇÃO
 const initialPage = window.location.hash.substring(1) || 'dashboard';
 showPage(initialPage);
+
+});
