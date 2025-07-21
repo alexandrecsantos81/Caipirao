@@ -21,7 +21,7 @@
 
     <script>
         // Script de proteção de rota
-        const token = localStorage.getItem('jwtToken');
+        const token = localStorage.getItem('jwtToken' );
         if (!token) {
             window.location.href = 'login.html';
         }
@@ -48,17 +48,16 @@
                     <span>📦</span> Produtos
                 </a>
 
-            <div class="p-6 mt-auto">
-            <button id="logout-btn" class="w-full flex items-center justify-center py-2 px-4 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition duration-200">
-                <span>🔒</span>
-                <span class="ml-2">Logout</span>
-            </button>
-        </div>
-
+                <div class="p-6 mt-auto">
+                    <button id="logout-btn" class="w-full flex items-center justify-center py-2 px-4 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition duration-200">
+                        <span>🔒</span>
+                        <span class="ml-2">Logout</span>
+                    </button>
+                </div>
             </nav>
         </aside>
 
-        <!-- Conteúdo Principal -->
+        <!--- Conteúdo Principal --->
         <div class="flex-1 flex flex-col overflow-hidden">
             <header class="bg-white shadow-sm p-4">
                 <h2 id="page-title" class="text-xl font-semibold text-slate-800">Dashboard</h2>
@@ -84,28 +83,22 @@
                 <div id="page-movimentacoes" class="page-content">
                     <section class="mb-8">
                         <h2 class="text-2xl font-semibold mb-4">Adicionar Nova Movimentação</h2>
-                        <!-- ======================= FORMULÁRIO DE MOVIMENTAÇÕES CORRIGIDO ======================= -->
                         <form id="add-movimentacao-form" class="bg-white p-6 rounded-lg shadow grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div><label for="id_mov" class="block text-sm font-medium text-slate-700">ID Mov.</label><input type="text" id="id_mov" name="ID Mov." required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Ex: 3"></div>
-                            <div><label for="data" class="block text-sm font-medium text-slate-700">Data</label><input type="date" id="data" name="Data" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"></div>
-                            <div><label for="tipo" class="block text-sm font-medium text-slate-700">Tipo</label><select id="tipo" name="Tipo (Entrada/Saída)" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"><option value="Entrada">Entrada</option><option value="Saída">Saída</option></select></div>
-                            <div><label for="categoria" class="block text-sm font-medium text-slate-700">Categoria</label><input type="text" id="categoria" name="Categoria" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Ex: Venda"></div>
-                            <div class="md:col-span-2"><label for="descricao" class="block text-sm font-medium text-slate-700">Descrição</label><input type="text" id="descricao" name="Descrição" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Ex: Venda de frango"></div>
-                            <div><label for="valor" class="block text-sm font-medium text-slate-700">Valor</label><input type="number" step="0.01" id="valor" name="Valor" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Ex: 150.00"></div>
-                            <div><label for="responsavel" class="block text-sm font-medium text-slate-700">Responsável</label><input type="text" id="responsavel" name="Responsável" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Ex: Alexandre"></div>
-                            <div class="md:col-span-2"><label for="observacoes" class="block text-sm font-medium text-slate-700">Observações</label><input type="text" id="observacoes" name="Observações" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Ex: Cliente X"></div>
+                            <div><label for="data" class="block text-sm font-medium text-slate-700">Data</label><input type="date" id="data" name="Data" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase-input"></div>
+                            <div><label for="tipo" class="block text-sm font-medium text-slate-700">Tipo</label><select id="tipo" name="Tipo (Entrada/Saída)" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase-input"><option value="Entrada">Entrada</option><option value="Saída">Saída</option></select></div>
+                            <div><label for="categoria" class="block text-sm font-medium text-slate-700">Categoria</label><input type="text" id="categoria" name="Categoria" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase-input" placeholder="Ex: Venda"></div>
+                            <div class="md:col-span-2"><label for="descricao" class="block text-sm font-medium text-slate-700">Descrição</label><input type="text" id="descricao" name="Descrição" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase-input" placeholder="Ex: Venda de frango"></div>
+                            <div><label for="valor" class="block text-sm font-medium text-slate-700">Valor</label><input type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]+" id="valor" name="Valor" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase-input" placeholder="Ex: 150,00"></div>
+                            <div><label for="responsavel" class="block text-sm font-medium text-slate-700">Responsável</label><input type="text" id="responsavel" name="Responsável" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase-input" placeholder="Ex: Alexandre"></div>
+                            <div class="md:col-span-2"><label for="observacoes" class="block text-sm font-medium text-slate-700">Observações</label><input type="text" id="observacoes" name="Observações" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase-input" placeholder="Ex: Cliente X"></div>
                             <div class="lg:col-span-2 flex items-end"><button type="submit" class="w-full lg:w-auto mt-1 bg-blue-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Adicionar Movimentação</button></div>
                         </form>
                     </section>
                     <section>
                         <h2 class="text-2xl font-semibold mb-4">Histórico de Movimentações</h2>
-
-                        <!-- ===== CAMPO DE PESQUISA ADICIONADO ===== -->
                         <div class="mb-4">
-                            <input type="text" id="search-movimentacoes" class="block w-full md:w-1/2 lg:w-1/3 rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Pesquisar em todas as colunas...">
+                            <input type="text" id="search-movimentacoes" class="block w-full md:w-1/2 lg:w-1/3 rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase-input" placeholder="Pesquisar em todas as colunas...">
                         </div>
-                        <!-- ======================================= -->
-
                         <div id="movimentacoes-container" class="bg-white p-6 rounded-lg shadow">
                             <p>A carregar dados...</p>
                         </div>
@@ -116,23 +109,18 @@
                 <div id="page-clientes" class="page-content">
                     <section class="mb-8">
                         <h2 class="text-2xl font-semibold mb-4">Adicionar Novo Cliente</h2>
-                        <!-- ======================= FORMULÁRIO DE CLIENTES CORRIGIDO ======================= -->
                         <form id="add-cliente-form" class="bg-white p-6 rounded-lg shadow grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label for="cliente-id" class="block text-sm font-medium text-slate-700">ID Cliente</label>
-                                <input type="text" id="cliente-id" name="ID" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Ex: C01">
-                            </div>
-                            <div>
                                 <label for="cliente-nome" class="block text-sm font-medium text-slate-700">Nome</label>
-                                <input type="text" id="cliente-nome" name="Nome" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Ex: João da Silva">
+                                <input type="text" id="cliente-nome" name="Nome" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500  uppercase-input" placeholder="Ex: João da Silva">
                             </div>
                             <div>
-                                <label for="cliente-contato" class="block text-sm font-medium text-slate-700">Contato (Telefone/Email)</label>
-                                <input type="text" id="cliente-contato" name="Contato" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Ex: (62) 99999-9999">
+                                <label for="cliente-contato" class="block text-sm font-medium text-slate-700">Contato (Telefone ou E-mail)</label>
+                                <input type="text" id="cliente-contato" name="Contato" inputmode="tel" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase-input" placeholder="Telefone ou e-mail do cliente">
                             </div>
                             <div>
                                 <label for="cliente-endereco" class="block text-sm font-medium text-slate-700">Endereço</label>
-                                <input type="text" id="cliente-endereco" name="Endereço" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Ex: Rua das Flores, 123">
+                                <input type="text" id="cliente-endereco" name="Endereço" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm uppercase-input" placeholder="Ex: Rua das Flores, 123">
                             </div>
                             <div class="md:col-span-2">
                                 <button type="submit" class="mt-4 w-full lg:w-auto bg-blue-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
@@ -153,29 +141,22 @@
                 <div id="page-produtos" class="page-content">
                     <section class="mb-8">
                         <h2 class="text-2xl font-semibold mb-4">Adicionar Novo Produto</h2>
-                        <!-- ======================= FORMULÁRIO DE PRODUTOS CORRIGIDO ======================= -->
-                        <form id="add-produto-form" class="bg-white p-6 rounded-lg shadow grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <form id="add-produto-form" class="bg-white p-6 rounded-lg shadow space-y-4">
                             <div>
-                                <label for="produto-id" class="block text-sm font-medium text-slate-700">ID Produto</label>
-                                <input type="text" id="produto-id" name="ID" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Ex: P01">
-                            </div>
-                            <div>
-                                <label for="produto-nome" class="block text-sm font-medium text-slate-700">Nome do Produto</label>
-                                <input type="text" id="produto-nome" name="Nome" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Ex: Frango Inteiro">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label for="produto-descricao" class="block text-sm font-medium text-slate-700">Descrição</label>
-                                <input type="text" id="produto-descricao" name="Descrição" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Ex: Frango resfriado, aprox. 2kg">
+                                <label for="add-produto-nome" class="block text-sm font-medium text-gray-700">Nome</label>
+                                <input type="text" name="Nome" id="add-produto-nome" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm uppercase-input">
                             </div>
                             <div>
-                                <label for="produto-preco" class="block text-sm font-medium text-slate-700">Preço</label>
-                                <input type="number" step="0.01" id="produto-preco" name="Preço" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Ex: 25.50">
+                                <label for="add-produto-descricao" class="block text-sm font-medium text-gray-700">Descrição</label>
+                                <input type="text" name="Descrição" id="add-produto-descricao" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm uppercase-input">
                             </div>
-                            <div class="md:col-span-2 flex items-start">
-                                <button type="submit" class="mt-4 w-full lg:w-auto bg-blue-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    Adicionar Produto
-                                </button>
+                            <div>
+                                <label for="add-produto-preco" class="block text-sm font-medium text-gray-700">Preço</label>
+                                <input type="text" name="Preço" id="add-produto-preco" inputmode="decimal" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm uppercase-input">
                             </div>
+                            <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                Adicionar Produto
+                            </button>
                         </form>
                     </section>
                     <section>
@@ -190,17 +171,13 @@
         </div>
     </div>
 
-        <!-- ======================= MODAL DE EDIÇÃO ======================= -->
-    <!-- Fundo escuro do modal -->
+    <!-- ======================= MODAL DE EDIÇÃO ======================= -->
     <div id="edit-modal-backdrop" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <!-- Conteúdo do Modal -->
         <div id="edit-modal" class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 transform transition-all -translate-y-full">
-            <!-- Cabeçalho do Modal -->
             <div class="flex justify-between items-center border-b pb-3 mb-4">
                 <h3 id="edit-modal-title" class="text-2xl font-semibold">Editar Registo</h3>
                 <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
             </div>
-            <!-- Formulário de Edição (será preenchido dinamicamente) -->
             <form id="edit-form">
                 <div id="edit-form-fields" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Os campos do formulário serão inseridos aqui pelo JavaScript -->
@@ -218,8 +195,6 @@
     </div>
     <!-- =============================================================== -->
 
-    <script src="app.js"></script>
-
     <!-- Container para as notificações (toasts) -->
     <div id="notification-container" class="fixed top-5 right-5 z-50 space-y-2"></div>
 
@@ -228,11 +203,8 @@
         <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white"></div>
     </div>
 
-
-</body>
-</html>
-
-
+    <!-- Inclusão ÚNICA e CORRETA do script principal da aplicação -->
     <script src="app.js"></script>
+
 </body>
 </html>

@@ -15,3 +15,8 @@
 .toast-out {
   animation: fadeOut 0.5s forwards;
 }
+
+/* Adiciona esta classe para forçar o texto em maiúsculas nos inputs */
+.uppercase-input {
+    text-transform: uppercase;
+}
