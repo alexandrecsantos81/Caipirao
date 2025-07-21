@@ -40,14 +40,21 @@ app.use(express.json());
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
 console.log('--- DIAGNÓSTICO: SPREADSHEET_ID a ser usado:', SPREADSHEET_ID, '---');
 
-const creds = process.env.GOOGLE_CREDS_V2 ?
-    JSON.parse(process.env.GOOGLE_CREDS_V2) :
-    require(path.join(__dirname, 'data/credenciais.json'));
+// --- NOVA CONFIGURAÇÃO DE AUTENTICAÇÃO OAUTH 2.0 ---
+const { OAuth2 } = google.auth;
+const oauth2Client = new OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    "https://developers.google.com/oauthplayground" // Redirect URL
+ );
 
-const auth = new google.auth.GoogleAuth({
-    credentials: creds,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-} );
+oauth2Client.setCredentials({
+    refresh_token: process.env.GOOGLE_REFRESH_TOKEN
+});
+
+// O 'auth' a ser usado nas chamadas da API agora é o oauth2Client
+const auth = oauth2Client;
+// --- FIM DA NOVA CONFIGURAÇÃO ---
 
 // --- ROTAS DA API (Dados) ---
 
@@ -75,54 +82,118 @@ app.get('/api/:sheetName', verifyToken, async (req, res) => {
     }
 });
 
-// Rota para adicionar dados a uma aba
+// SUBSTITUA A SUA ROTA POST ANTIGA POR ESTA VERSÃO COMPLETA E CORRIGIDA
 app.post('/api/:sheetName', verifyToken, async (req, res) => {
-    let { sheetName } = req.params;
-    const data = req.body;
+    const { sheetName } = req.params;
+    const receivedData = req.body; // Dados que vêm do formulário do frontend
+
     const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
     const actualSheetName = allowedSheets[sheetName.toLowerCase()];
 
     if (!actualSheetName) {
-        return res.status(400).send('Nome da planilha inválido.');
+        return res.status(400).send('Erro: Nome da planilha inválido.');
     }
+
+    console.log(`--- INICIANDO ADIÇÃO NA ABA: ${actualSheetName} ---`);
+    console.log('Dados recebidos do frontend:', receivedData);
 
     try {
         const sheets = google.sheets({ version: 'v4', auth });
+
+        // Passo 1: Ler os cabeçalhos da planilha para saber a ordem correta das colunas
         const headerResponse = await sheets.spreadsheets.values.get({
             spreadsheetId: SPREADSHEET_ID,
-            range: `${actualSheetName}!1:1`,
+            range: `${actualSheetName}!1:1`, // Pega apenas a primeira linha (cabeçalhos)
         });
-        const headers = headerResponse.data.values[0];
-        const newRow = headers.map(header => data[header] || '');
 
+        const headers = headerResponse.data.values[0];
+        if (!headers || headers.length === 0) {
+            return res.status(500).send('Erro: Não foi possível ler os cabeçalhos da planilha de destino.');
+        }
+        console.log('Cabeçalhos lidos da planilha:', headers);
+
+        // Passo 2: Gerar um ID único para a nova linha
+        const generatedId = Date.now().toString().slice(-6) + Math.floor(Math.random() * 100);
+        const idColumnName = actualSheetName === '_Movimentacoes' ? 'ID Mov.' : 'ID';
+
+        // Passo 3: Construir a nova linha (newRow) dinamicamente, na ordem correta dos cabeçalhos
+        const newRow = headers.map(header => {
+            // Trata a coluna de ID
+            if (header === idColumnName) {
+                return generatedId;
+            }
+
+            // Procura a chave correspondente nos dados recebidos (ignorando maiúsculas/minúsculas)
+            const receivedDataKey = Object.keys(receivedData).find(key => key.toLowerCase() === header.toLowerCase());
+            
+            if (receivedDataKey) {
+                const value = receivedData[receivedDataKey];
+                // Converte valores numéricos (Valor, Preço) para o formato correto
+                if ((header.toLowerCase() === 'valor' || header.toLowerCase() === 'preço') && value) {
+                    return parseFloat(String(value).replace(',', '.'));
+                }
+                return value; // Retorna o valor como está para outras colunas
+            }
+
+            return ''; // Retorna uma string vazia se não houver dado correspondente
+        });
+
+        console.log('Linha montada para inserção:', newRow);
+
+        // Passo 4: Adicionar a linha construída à planilha
         await sheets.spreadsheets.values.append({
             spreadsheetId: SPREADSHEET_ID,
             range: actualSheetName,
-            valueInputOption: 'USER_ENTERED',
+            valueInputOption: 'USER_ENTERED', // Permite que o Google Sheets interprete os dados (ex: formate como moeda)
             resource: { values: [newRow] },
         });
-        res.status(201).send('Dados adicionados com sucesso!');
+
+        console.log('--- SUCESSO: Dados adicionados na planilha. ---');
+        res.status(201).send({ message: 'Dados adicionados com sucesso!', id: generatedId });
+
     } catch (error) {
-        console.error(`Erro ao adicionar dados na aba ${actualSheetName}:`, error.message);
-        res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
+        console.error(`!!! ERRO AO ADICIONAR DADOS NA ABA ${actualSheetName} !!!`, error.message);
+        res.status(500).send(`Erro no servidor ao adicionar dados: ${error.message}`);
     }
 });
 
-// Rota para apagar uma linha
-app.delete('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
-    const { sheetName, rowIndex } = req.params;
-    const { sheetId } = req.body;
 
-    if (!['movimentacoes', 'clientes', 'produtos'].includes(sheetName.toLowerCase())) {
-        return res.status(400).send('Nome da planilha inválido.');
-    }
-    if (sheetId === undefined) {
-        return res.status(400).send('O ID da aba (sheetId) é necessário.');
-    }
+
+
+// Rota para apagar uma linha (VERSÃO FINALÍSSIMA CORRIGIDA)
+app.delete('/api/:sheetName', verifyToken, async (req, res) => {
+    const { sheetName } = req.params;
+    const { id, sheetId } = req.query;
+
+    if (!['movimentacoes', 'clientes', 'produtos'].includes(sheetName.toLowerCase())) { return res.status(400).send('Nome da planilha inválido.'); }
+    if (!id) { return res.status(400).send('O ID do registo é obrigatório para a exclusão.'); }
+    if (!sheetId) { return res.status(400).send('O ID da aba (sheetId) é obrigatório.'); }
 
     try {
         const sheets = google.sheets({ version: 'v4', auth });
-        const apiStartIndex = parseInt(rowIndex, 10) + 1;
+        const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
+        const actualSheetName = allowedSheets[sheetName.toLowerCase()];
+
+        const getRows = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: actualSheetName });
+        const allData = getRows.data.values || [];
+        const headers = allData[0];
+        
+        // LÓGICA CORRIGIDA PARA ENCONTRAR A COLUNA DE ID
+        const idColumnName = actualSheetName === '_Movimentacoes' ? 'ID Mov.' : 'ID';
+        const idColumnIndex = headers.findIndex(header => header === idColumnName);
+
+        if (idColumnIndex === -1) { return res.status(500).send(`A coluna "${idColumnName}" não foi encontrada na planilha.`); }
+
+        let targetRowIndex = -1;
+        for (let i = 1; i < allData.length; i++) {
+            if (allData[i][idColumnIndex] === id) {
+                targetRowIndex = i;
+                break;
+            }
+        }
+
+        if (targetRowIndex === -1) { return res.status(404).send(`Registo com ID "${id}" não encontrado.`); }
+
         await sheets.spreadsheets.batchUpdate({
             spreadsheetId: SPREADSHEET_ID,
             resource: {
@@ -131,68 +202,97 @@ app.delete('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
                         range: {
                             sheetId: parseInt(sheetId, 10),
                             dimension: 'ROWS',
-                            startIndex: apiStartIndex,
-                            endIndex: apiStartIndex + 1
+                            startIndex: targetRowIndex,
+                            endIndex: targetRowIndex + 1
                         }
                     }
                 }]
             }
         });
-        res.status(200).send(`Linha ${rowIndex} apagada com sucesso.`);
+
+        console.log(`SUCESSO: Linha física ${targetRowIndex} deletada na API do Google.`);
+        res.status(200).send(`Registo com ID ${id} deletado com sucesso.`);
+
     } catch (error) {
-        console.error(`Erro ao apagar linha da aba ${sheetName}:`, error.message);
-        res.status(500).send(`Erro no servidor ao apagar a linha: ${error.message}`);
+        console.error('!!! ERRO DA API DO GOOGLE AO TENTAR DELETAR A LINHA FÍSICA !!!');
+        console.error(error.message);
+        res.status(500).send(`Erro no servidor ao deletar a linha: ${error.message}`);
     }
 });
 
-// Rota para atualizar (editar) uma linha
-app.put('/api/:sheetName/:rowIndex', verifyToken, async (req, res) => {
-    const { sheetName, rowIndex } = req.params;
-    const updatedData = req.body;
-    const { sheetId } = updatedData;
-    const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
-    const actualSheetName = allowedSheets[sheetName.toLowerCase()];
 
-    if (!actualSheetName) {
-        return res.status(400).send('Nome da planilha inválido.');
-    }
-    if (sheetId === undefined) {
-        return res.status(400).send('O ID da aba (sheetId) é necessário para a edição.');
-    }
+    // VERSÃO COM COMPARAÇÃO INSENSÍVEL A MAIÚSCULAS/MINÚSCULAS
+    app.put('/api/:sheetName', verifyToken, async (req, res) => {
+        const { sheetName } = req.params;
+        const updatedData = req.body;
+        const { id } = updatedData;
 
-    try {
-        const sheets = google.sheets({ version: 'v4', auth });
-        const headerResponse = await sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID,
-            range: `${actualSheetName}!1:1`,
-        });
-        const headers = headerResponse.data.values[0];
-        const updatedRowValues = headers.map(header => {
-            const value = updatedData[header] || '';
-            if ((header.toLowerCase() === 'preço' || header.toLowerCase() === 'valor') && !isNaN(parseFloat(value))) {
-                return { userEnteredValue: { numberValue: parseFloat(value) }, userEnteredFormat: { numberFormat: { type: 'CURRENCY', pattern: '"R$"#,##0.00' } } };
+        if (!id) {
+            return res.status(400).send('Erro: O ID do registo é obrigatório para a edição.');
+        }
+        const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
+        const actualSheetName = allowedSheets[sheetName.toLowerCase()];
+        if (!actualSheetName) {
+            return res.status(400).send('Nome da planilha inválido.');
+        }
+
+        try {
+            const sheets = google.sheets({ version: 'v4', auth });
+
+            const getResponse = await sheets.spreadsheets.values.get({
+                spreadsheetId: SPREADSHEET_ID,
+                range: actualSheetName,
+            });
+            const allRows = getResponse.data.values || [];
+            const headers = allRows[0];
+            
+            const idKey = sheetName === 'movimentacoes' ? 'ID Mov.' : 'ID';
+            
+            const idColumnIndex = headers.findIndex(header => header.toLowerCase() === idKey.toLowerCase());
+            
+            let targetRowIndex = -1;
+            for (let i = 1; i < allRows.length; i++) {
+                if (allRows[i][idColumnIndex] == id) {
+                    targetRowIndex = i;
+                    break;
+                }
             }
-            return { userEnteredValue: { stringValue: value.toString() } };
-        });
 
-        await sheets.spreadsheets.batchUpdate({
-            spreadsheetId: SPREADSHEET_ID,
-            resource: {
-                requests: [{
-                    updateCells: {
-                        start: { sheetId: parseInt(sheetId, 10), rowIndex: parseInt(rowIndex, 10) + 1, columnIndex: 0 },
-                        rows: [{ values: updatedRowValues }],
-                        fields: 'userEnteredValue,userEnteredFormat'
-                    }
-                }]
+            if (targetRowIndex === -1) {
+                return res.status(404).send('Registo não encontrado na planilha.');
             }
-        });
-        res.status(200).send('Registo atualizado com sucesso!');
-    } catch (error) {
-        console.error(`Erro ao atualizar registo na aba ${actualSheetName}:`, error.message);
-        res.status(500).send(`Erro ao atualizar registo: ${error.message}`);
-    }
-});
+
+            const updatedRowValues = headers.map(header => {
+                if (header.toLowerCase() === idKey.toLowerCase()) {
+                    return id;
+                }
+                if ((header.toLowerCase() === 'preço' || header.toLowerCase() === 'valor') && updatedData[header]) {
+                    const numericValue = parseFloat(String(updatedData[header]).replace(',', '.'));
+                    return isNaN(numericValue) ? '' : numericValue;
+                }
+                // Procura a chave correspondente em updatedData ignorando maiúsculas/minúsculas
+                const dataKey = Object.keys(updatedData).find(k => k.toLowerCase() === header.toLowerCase());
+                return dataKey ? updatedData[dataKey] : '';
+            });
+
+            const rangeToUpdate = `${actualSheetName}!A${targetRowIndex + 1}`;
+            
+            await sheets.spreadsheets.values.update({
+                spreadsheetId: SPREADSHEET_ID,
+                range: rangeToUpdate,
+                valueInputOption: 'USER_ENTERED',
+                resource: {
+                    values: [updatedRowValues]
+                }
+            });
+
+            res.status(200).send('Registo atualizado com sucesso!');
+
+        } catch (error) {
+            console.error(`Erro ao atualizar registo:`, error.message);
+            res.status(500).send(`Erro no servidor ao atualizar: ${error.message}`);
+        }
+    });
 
 // --- ROTAS DE AUTENTICAÇÃO ---
 
@@ -214,33 +314,6 @@ function verifyToken(req, res, next) {
     });
 }
 
-// Rota para registar um novo utilizador
-app.post('/auth/register', async (req, res) => {
-    const { email, senha } = req.body;
-
-    if (!email || !senha) {
-        return res.status(400).send('Email e senha são obrigatórios.');
-    }
-
-    try {
-        const sheets = google.sheets({ version: 'v4', auth });
-        const saltRounds = 10;
-        const senhaHash = await bcrypt.hash(senha, saltRounds);
-        const newRow = [email, senhaHash];
-
-        await sheets.spreadsheets.values.append({
-            spreadsheetId: SPREADSHEET_ID,
-            range: 'Utilizadores',
-            valueInputOption: 'USER_ENTERED',
-            resource: { values: [newRow] },
-        });
-
-        res.status(201).send('Utilizador registado com sucesso!');
-    } catch (error) {
-        console.error('Erro ao registar utilizador:', error.message);
-        res.status(500).send('Erro no servidor ao registar o utilizador.');
-    }
-});
 
 // Rota para fazer login de um utilizador
 app.post('/auth/login', async (req, res) => {
