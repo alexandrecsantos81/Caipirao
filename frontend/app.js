@@ -30,6 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const editFormFields = document.getElementById('edit-form-fields');
     const closeModalBtn = document.getElementById('close-modal-btn');
     const cancelEditBtn = document.getElementById('cancel-edit-btn');
+    const tipoMovimentacaoSelect = document.getElementById('tipo');
+    const categoriaMovimentacaoInput = document.getElementById('categoria');
+    const clienteFieldWrapper = document.getElementById('cliente-field-wrapper');
+    const clienteMovimentacaoSelect = document.getElementById('cliente-movimentacao');
 
     let currentEditInfo = {};
     let allMovimentacoes = [];
@@ -75,20 +79,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- FUNÇÕES DE BUSCA DE DADOS (FETCH) ---
-    function fetchMovimentacoes() { fetchData('movimentacoes', document.getElementById('movimentacoes-container'), CONFIG.SHEET_IDS.movimentacoes); }
-    function fetchClientes() { fetchData('clientes', document.getElementById('clientes-container'), CONFIG.SHEET_IDS.clientes); }
-    function fetchProdutos() { fetchData('produtos', document.getElementById('produtos-container'), CONFIG.SHEET_IDS.produtos); }
-
-function reloadDataForEntity(entity) {
-    if (entity === 'dashboard' || entity === 'movimentacoes') {
-        // Adicione 'return' para que a promessa seja retornada e 'await' funcione
-        return fetchMovimentacoes(); 
-    } else if (entity === 'clientes') {
-        return fetchClientes();
-    } else if (entity === 'produtos') {
-        return fetchProdutos();
+    // CORREÇÃO: Adicionado 'return' para que a promessa de fetchData seja retornada
+    function fetchMovimentacoes() { return fetchData('movimentacoes', document.getElementById('movimentacoes-container'), CONFIG.SHEET_IDS.movimentacoes); }
+    function fetchProdutos() { return fetchData('produtos', document.getElementById('produtos-container'), CONFIG.SHEET_IDS.produtos); }
+    
+    // CORREÇÃO: fetchClientes agora é async e usa await para garantir a ordem
+    async function fetchClientes() {
+        const container = document.getElementById('clientes-container');
+        // Espera que os dados sejam buscados antes de tentar popular o dropdown
+        await fetchData('clientes', container, CONFIG.SHEET_IDS.clientes);
+        // 'allClientes' agora está garantidamente atualizado
+        populateClientesDropdown(allClientes);
     }
-}
+
+    function reloadDataForEntity(entity) {
+        if (entity === 'dashboard' || entity === 'movimentacoes') {
+            return fetchMovimentacoes(); 
+        } else if (entity === 'clientes') {
+            return fetchClientes();
+        } else if (entity === 'produtos') {
+            return fetchProdutos();
+        }
+    }
 
     async function fetchData(entity, container, sheetId) {
         showLoader();
@@ -113,10 +125,14 @@ function reloadDataForEntity(entity) {
             } else if (entity === 'produtos') {
                 allProdutos = formattedData;
             }
-            createTable(container, formattedData, entity, sheetId);
+            if (container) { // Só cria a tabela se um container for fornecido
+                createTable(container, formattedData, entity, sheetId);
+            }
         } catch (error) {
             console.error(`Erro ao buscar ${entity}:`, error);
-            container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}.</p>`;
+            if (container) {
+                container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}.</p>`;
+            }
             showNotification(`Falha ao carregar dados de ${entity}`, 'error');
         } finally {
             hideLoader();
@@ -124,171 +140,148 @@ function reloadDataForEntity(entity) {
     }
 
     // --- LÓGICA DE ADIÇÃO (CREATE) ---
-async function handleAddFormSubmit(event) { // 1. Adicione 'async' aqui
-    event.preventDefault();
-    const form = event.target;
-    const entity = form.dataset.entity;
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData.entries());
+    async function handleAddFormSubmit(event) {
+        event.preventDefault();
+        const form = event.target;
+        const entity = form.dataset.entity;
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
 
-    for (const key in data) {
-        if (typeof data[key] === 'string') {
-            data[key] = data[key].toUpperCase();
+        for (const key in data) {
+            if (typeof data[key] === 'string') {
+                data[key] = data[key].toUpperCase();
+            }
+        }
+        
+        showLoader();
+        try {
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) throw new Error(await response.text());
+            
+            showNotification(`${entity.slice(0, -1)} adicionado com sucesso!`, 'success');
+            form.reset();
+            await reloadDataForEntity(entity); 
+        } catch (error) {
+            console.error(`Erro ao adicionar ${entity}:`, error);
+            showNotification(`Falha ao adicionar: ${error.message}`, 'error');
+        } finally {
+            hideLoader();
         }
     }
-    
-    showLoader();
-    try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify(data)
-        });
-        if (!response.ok) throw new Error(await response.text());
-        
-        showNotification(`${entity.slice(0, -1)} adicionado com sucesso!`, 'success');
-        form.reset();
-        
-        // 2. Use 'await' para esperar a recarga dos dados antes de continuar
-        await reloadDataForEntity(entity); 
-
-    } catch (error) {
-        console.error(`Erro ao adicionar ${entity}:`, error);
-        showNotification(`Falha ao adicionar: ${error.message}`, 'error');
-    } finally {
-        hideLoader();
-    }
-}
-
 
     // --- LÓGICA DE EDIÇÃO (UPDATE) ---
-// SUBSTITUA A SUA FUNÇÃO openEditModal POR ESTA
-function openEditModal(entity, rowData, sheetId) {
-    const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
-    const idValue = rowData[idKey];
-    if (!idValue) {
-        showNotification('Não é possível editar um registo sem ID.', 'error');
-        return;
+    function openEditModal(entity, rowData, sheetId) {
+        const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
+        const idValue = rowData[idKey];
+        if (!idValue) {
+            showNotification('Não é possível editar um registo sem ID.', 'error');
+            return;
+        }
+        currentEditInfo = { entity, sheetId, id: idValue };
+        editFormFields.innerHTML = '';
+
+        for (const key in rowData) {
+            if (key.toLowerCase() === 'sheetid') continue;
+            const fieldWrapper = document.createElement('div');
+            const label = document.createElement('label');
+            label.className = 'block text-sm font-medium text-slate-700 dark:text-slate-300';
+            label.textContent = key;
+            let input;
+
+            if (key === 'Tipo (Entrada/Saída)') {
+                input = document.createElement('select');
+                input.className = 'form-input';
+                ['ENTRADA', 'SAÍDA'].forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = option.textContent = opt;
+                    input.appendChild(option);
+                });
+                input.value = rowData[key];
+            } else {
+                input = document.createElement('input');
+                input.type = 'text';
+                input.value = rowData[key];
+                input.className = 'form-input';
+            }
+            input.id = `edit-${key}`;
+            input.name = key;
+            if (key === idKey) {
+                input.disabled = true;
+                input.classList.add('bg-slate-200', 'dark:bg-slate-600');
+            }
+            fieldWrapper.appendChild(label);
+            fieldWrapper.appendChild(input);
+            editFormFields.appendChild(fieldWrapper);
+        }
+
+        modalBackdrop.classList.remove('hidden');
+        modalBackdrop.classList.add('flex');
+        modal.classList.remove('-translate-y-full');
+        modal.classList.add('translate-y-0');
     }
-    currentEditInfo = { entity, sheetId, id: idValue };
-    editFormFields.innerHTML = '';
 
-    for (const key in rowData) {
-        if (key.toLowerCase() === 'sheetid') continue;
-        const fieldWrapper = document.createElement('div');
-        const label = document.createElement('label');
-        label.className = 'block text-sm font-medium text-slate-700';
-        label.textContent = key;
-        let input;
+    function closeEditModal() {
+        modalBackdrop.classList.add('hidden');
+        modalBackdrop.classList.remove('flex');
+        modal.classList.add('-translate-y-full');
+        modal.classList.remove('translate-y-0');
+    }
 
-        if (key === 'Tipo (Entrada/Saída)') {
-            input = document.createElement('select');
-            input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm';
-            
-            // Use os valores em MAIÚSCULAS para corresponder aos dados
-            ['ENTRADA', 'SAÍDA'].forEach(opt => {
-                const option = document.createElement('option');
-                option.value = option.textContent = opt;
-                input.appendChild(option);
+    async function handleEditFormSubmit(event) {
+        event.preventDefault();
+        showLoader();
+        const formData = new FormData(editForm);
+        const updatedData = Object.fromEntries(formData.entries());
+        const { entity, id } = currentEditInfo;
+        updatedData.id = id;
+
+        try {
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(updatedData)
             });
-            input.value = rowData[key]; // Agora 'ENTRADA' irá corresponder a uma option
-            
-        } else {
-            input = document.createElement('input');
-            input.type = 'text';
-            input.value = rowData[key];
-            input.className = 'mt-1 block w-full rounded-md border-slate-300 shadow-sm';
+            if (!response.ok) throw new Error(await response.text());
+            showNotification('Registo atualizado com sucesso!', 'success');
+            closeEditModal();
+            await reloadDataForEntity(entity); 
+        } catch (error) {
+            console.error(`Erro ao atualizar ${entity}:`, error);
+            showNotification(`Falha ao atualizar: ${error.message}`, 'error');
+        } finally {
+            hideLoader();
         }
-        input.id = `edit-${key}`;
-        input.name = key;
-        if (key === idKey) {
-            input.disabled = true;
-            input.classList.add('bg-slate-100');
-        }
-        fieldWrapper.appendChild(label);
-        fieldWrapper.appendChild(input);
-        editFormFields.appendChild(fieldWrapper);
     }
-
-    // --- CORREÇÃO APLICADA AQUI ---
-    // Mostra o fundo escuro
-    modalBackdrop.classList.remove('hidden');
-    modalBackdrop.classList.add('flex'); // Usa flex para centralizar
-    // Traz o modal para a visão
-    modal.classList.remove('-translate-y-full');
-    modal.classList.add('translate-y-0');
-}
-
-// SUBSTITUA A SUA FUNÇÃO closeEditModal POR ESTA
-function closeEditModal() {
-    // Esconde o fundo escuro
-    modalBackdrop.classList.add('hidden');
-    modalBackdrop.classList.remove('flex');
-    // Move o modal para fora da visão para a próxima vez
-    modal.classList.add('-translate-y-full');
-    modal.classList.remove('translate-y-0');
-}
-
-
-// DENTRO DA FUNÇÃO handleEditFormSubmit
-async function handleEditFormSubmit(event) {
-    event.preventDefault();
-    showLoader();
-    const formData = new FormData(editForm);
-    const updatedData = Object.fromEntries(formData.entries());
-    const { entity, id } = currentEditInfo;
-    updatedData.id = id;
-
-    try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}`, {
-            method: 'PUT',
-            headers: getAuthHeaders(),
-            body: JSON.stringify(updatedData)
-        });
-        if (!response.ok) throw new Error(await response.text());
-        showNotification('Registo atualizado com sucesso!', 'success');
-        closeEditModal();
-        
-        // --- CORREÇÃO APLICADA AQUI ---
-        await reloadDataForEntity(entity); 
-
-    } catch (error) {
-        console.error(`Erro ao atualizar ${entity}:`, error);
-        showNotification(`Falha ao atualizar: ${error.message}`, 'error');
-    } finally {
-        hideLoader();
-    }
-}
 
     // --- LÓGICA DE EXCLUSÃO (DELETE) ---
-// DENTRO DA FUNÇÃO deleteRow
-async function deleteRow(entity, rowData, sheetId) {
-    const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
-    const uniqueId = rowData[idKey];
-    if (!uniqueId) {
-        showNotification('Não foi possível apagar: o registo não tem um ID.', 'error');
-        return;
+    async function deleteRow(entity, rowData, sheetId) {
+        const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
+        const uniqueId = rowData[idKey];
+        if (!uniqueId) {
+            showNotification('Não foi possível apagar: o registo não tem um ID.', 'error');
+            return;
+        }
+        if (!confirm(`Tem a certeza de que quer apagar o registo com ID: ${uniqueId}?`)) return;
+        showLoader();
+        try {
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}?id=${uniqueId}&sheetId=${sheetId}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            if (!response.ok) throw new Error(await response.text());
+            showNotification('Registo apagado com sucesso!', 'success');
+            await reloadDataForEntity(entity);
+        } catch (error) {
+            console.error(`Erro ao apagar ${entity}:`, error);
+            showNotification(`Falha ao apagar: ${error.message}`, 'error');
+        } finally {
+            hideLoader();
+        }
     }
-    if (!confirm(`Tem a certeza de que quer apagar o registo com ID: ${uniqueId}?`)) return;
-    showLoader();
-    try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}?id=${uniqueId}&sheetId=${sheetId}`, {
-            method: 'DELETE',
-            headers: getAuthHeaders()
-        });
-        if (!response.ok) throw new Error(await response.text());
-        showNotification('Registo apagado com sucesso!', 'success');
-
-        // --- CORREÇÃO APLICADA AQUI ---
-        await reloadDataForEntity(entity);
-
-    } catch (error) {
-        console.error(`Erro ao apagar ${entity}:`, error);
-        showNotification(`Falha ao apagar: ${error.message}`, 'error');
-    } finally {
-        hideLoader();
-    }
-}
 
     // --- FUNÇÕES DE CRIAÇÃO DE INTERFACE (UI) ---
     function formatData(rawData) {
@@ -307,20 +300,18 @@ async function deleteRow(entity, rowData, sheetId) {
             return;
         }
         const table = document.createElement('table');
-        table.className = 'w-full text-left';
+        table.className = 'w-full text-left border-collapse';
         const thead = document.createElement('thead');
-        thead.className = 'bg-slate-100';
         const headerRow = document.createElement('tr');
         const headers = Object.keys(data[0] || {});
         headers.forEach(headerText => {
             const th = document.createElement('th');
-            th.className = 'p-3 font-semibold';
             th.textContent = headerText;
             headerRow.appendChild(th);
         });
         const thAcoes = document.createElement('th');
-        thAcoes.className = 'p-3 font-semibold text-right';
         thAcoes.textContent = 'Ações';
+        thAcoes.className = 'text-right';
         headerRow.appendChild(thAcoes);
         thead.appendChild(headerRow);
         table.appendChild(thead);
@@ -328,15 +319,13 @@ async function deleteRow(entity, rowData, sheetId) {
         data.forEach(rowData => {
             if (Object.values(rowData).every(val => val === '')) return;
             const row = document.createElement('tr');
-            row.className = 'border-b border-slate-200 hover:bg-slate-50';
             headers.forEach(header => {
                 const td = document.createElement('td');
-                td.className = 'p-3';
                 td.textContent = rowData[header];
                 row.appendChild(td);
             });
             const tdBotao = document.createElement('td');
-            tdBotao.className = 'p-3 text-right space-x-2';
+            tdBotao.className = 'text-right space-x-2';
             const editButton = document.createElement('button');
             editButton.textContent = 'Editar';
             editButton.className = 'bg-blue-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-blue-600';
@@ -354,45 +343,64 @@ async function deleteRow(entity, rowData, sheetId) {
         container.appendChild(table);
     }
 
-// --- LÓGICA DO DASHBOARD ---
-function formatCurrency(value) { return parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
-// SUBSTITUA A SUA FUNÇÃO updateDashboard POR ESTA VERSÃO CORRIGIDA
-function updateDashboard(data) {
-    let totalEntradas = 0, totalSaidas = 0;
-    const categoryTotals = {};
-
-    if (Array.isArray(data)) {
-        data.forEach(mov => {
-            if (mov && typeof mov === 'object') {
-                const valor = parseFloat(String(mov.Valor || '0').replace(/[^0-9,.]/g, '').replace(',', '.')) || 0;
-                
-                // --- CORREÇÃO APLICADA AQUI ---
-                // Converte o tipo para minúsculas antes de comparar para ignorar case
-                const tipoMovimentacao = (mov['Tipo (Entrada/Saída)'] || '').toLowerCase();
-
-                if (tipoMovimentacao === 'entrada') {
-                    totalEntradas += valor;
-                } else if (tipoMovimentacao === 'saída') {
-                    totalSaidas += valor;
+    function populateClientesDropdown(clientes) {
+        if (!clienteMovimentacaoSelect) return;
+        clienteMovimentacaoSelect.innerHTML = '<option value="">Selecione um cliente</option>';
+        if (Array.isArray(clientes)) {
+            clientes.forEach(cliente => {
+                const id = cliente.ID;
+                const nome = cliente.Nome;
+                if (id && nome) {
+                    const option = document.createElement('option');
+                    option.value = nome;
+                    option.textContent = nome;
+                    clienteMovimentacaoSelect.appendChild(option);
                 }
-                // --------------------------------
-
-                if (mov.Categoria) {
-                    // O cálculo do gráfico de categorias já estava correto
-                    categoryTotals[mov.Categoria] = (categoryTotals[mov.Categoria] || 0) + valor;
-                }
-            }
-        });
+            });
+        }
     }
-    document.getElementById('total-entradas').textContent = formatCurrency(totalEntradas);
-    document.getElementById('total-saidas').textContent = formatCurrency(totalSaidas);
-    document.getElementById('saldo-atual').textContent = formatCurrency(totalEntradas - totalSaidas);
-    updateChart(categoryTotals);
-}
+
+    function toggleClienteField() {
+        if (!tipoMovimentacaoSelect || !categoriaMovimentacaoInput || !clienteFieldWrapper) return;
+        const tipo = tipoMovimentacaoSelect.value.toUpperCase();
+        const categoria = categoriaMovimentacaoInput.value.toUpperCase();
+        if (tipo === 'ENTRADA' && categoria === 'VENDA') {
+            clienteFieldWrapper.classList.remove('hidden');
+        } else {
+            clienteFieldWrapper.classList.add('hidden');
+            clienteMovimentacaoSelect.value = '';
+        }
+    }
+
+    // --- LÓGICA DO DASHBOARD ---
+    function formatCurrency(value) { return parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+    
+    function updateDashboard(data) {
+        let totalEntradas = 0, totalSaidas = 0;
+        const categoryTotals = {};
+        if (Array.isArray(data)) {
+            data.forEach(mov => {
+                if (mov && typeof mov === 'object') {
+                    const valor = parseFloat(String(mov.Valor || '0').replace(/[^0-9,.]/g, '').replace(',', '.')) || 0;
+                    const tipoMovimentacao = (mov['Tipo (Entrada/Saída)'] || '').toLowerCase();
+                    if (tipoMovimentacao === 'entrada') totalEntradas += valor;
+                    else if (tipoMovimentacao === 'saída') totalSaidas += valor;
+                    if (mov.Categoria) {
+                        categoryTotals[mov.Categoria] = (categoryTotals[mov.Categoria] || 0) + valor;
+                    }
+                }
+            });
+        }
+        document.getElementById('total-entradas').textContent = formatCurrency(totalEntradas);
+        document.getElementById('total-saidas').textContent = formatCurrency(totalSaidas);
+        document.getElementById('saldo-atual').textContent = formatCurrency(totalEntradas - totalSaidas);
+        updateChart(categoryTotals);
+    }
 
     function updateChart(categoryData) {
         if (categoryChart) categoryChart.destroy();
         const ctx = document.getElementById('categoryChart').getContext('2d');
+        Chart.defaults.color = document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#334155';
         categoryChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -401,68 +409,101 @@ function updateDashboard(data) {
                     label: 'Valor por Categoria',
                     data: Object.values(categoryData),
                     backgroundColor: ['#3b82f6', '#ef4444', '#22c55e', '#f97316', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'],
-                    hoverOffset: 4
+                    hoverOffset: 4,
+                    borderColor: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff'
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false }
         });
     }
 
-// --- EVENT LISTENERS E INICIALIZAÇÃO ---
-navLinks.forEach(link => {
-    link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const pageId = link.getAttribute('href').substring(1);
-        window.location.hash = pageId;
-        // A FUNÇÃO showPage AGORA SÓ MOSTRA A PÁGINA E CARREGA OS DADOS
-        showPage(pageId); 
+    // --- EVENT LISTENERS E INICIALIZAÇÃO ---
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const pageId = link.getAttribute('href').substring(1);
+            window.location.hash = pageId;
+            showPage(pageId); 
+        });
     });
-});
 
-logoutBtn.addEventListener('click', () => {
-    localStorage.removeItem('jwtToken');
-    showNotification('Sessão terminada com sucesso!');
-    setTimeout(() => { window.location.href = 'login.html'; }, 1000);
-});
+    logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('jwtToken');
+        showNotification('Sessão terminada com sucesso!');
+        setTimeout(() => { window.location.href = 'login.html'; }, 1000);
+    });
 
-// =====================================================================
-// NOVA LÓGICA CENTRALIZADA PARA ADICIONAR LISTENERS (FAÇA ISSO APENAS UMA VEZ)
-// =====================================================================
-document.querySelectorAll('form[id^="add-"]').forEach(form => {
-    let entityName = form.id.replace('add-', '').replace('-form', '');
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+    const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
 
-    if (entityName === 'movimentacao') {
-        entityName = 'movimentacoes';
-    } else if (entityName.endsWith('o') || entityName.endsWith('e')) {
-        entityName += 's';
+    const applyTheme = (isDark) => {
+        if (isDark) {
+            document.documentElement.classList.add('dark');
+            themeToggleLightIcon.classList.remove('hidden');
+            themeToggleDarkIcon.classList.add('hidden');
+        } else {
+            document.documentElement.classList.remove('dark');
+            themeToggleLightIcon.classList.add('hidden');
+            themeToggleDarkIcon.classList.remove('hidden');
+        }
+        // Redesenha o gráfico com as cores do novo tema
+        if (document.getElementById('page-dashboard').classList.contains('active')) {
+            updateChart(allMovimentacoes.reduce((acc, mov) => {
+                if (mov.Categoria) acc[mov.Categoria] = (acc[mov.Categoria] || 0) + (parseFloat(String(mov.Valor || '0').replace(/[^0-9,.]/g, '').replace(',', '.')) || 0);
+                return acc;
+            }, {}));
+        }
+    };
+
+    const storedTheme = localStorage.getItem('theme');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDarkMode = storedTheme === 'dark' || (storedTheme === null && systemPrefersDark);
+    applyTheme(isDarkMode);
+
+    themeToggleBtn.addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        applyTheme(isDark);
+    });
+
+    document.querySelectorAll('form[id^="add-"]').forEach(form => {
+        let entityName = form.id.replace('add-', '').replace('-form', '');
+        if (entityName === 'movimentacao') {
+            entityName = 'movimentacoes';
+        } else if (entityName.endsWith('o') || entityName.endsWith('e')) {
+            entityName += 's';
+        }
+        form.dataset.entity = entityName;
+        form.addEventListener('submit', handleAddFormSubmit);
+    });
+
+    editForm.addEventListener('submit', handleEditFormSubmit);
+    closeModalBtn.addEventListener('click', closeEditModal);
+    cancelEditBtn.addEventListener('click', closeEditModal);
+
+    const searchInput = document.getElementById('search-movimentacoes');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredMovimentacoes = allMovimentacoes.filter(mov => 
+                Object.values(mov).some(value => String(value).toLowerCase().includes(searchTerm))
+            );
+            createTable(document.getElementById('movimentacoes-container'), filteredMovimentacoes, 'movimentacoes', CONFIG.SHEET_IDS.movimentacoes);
+        });
     }
-    
-    form.dataset.entity = entityName;
-    
-    // A linha abaixo é a mais importante. Ela adiciona o listener uma única vez.
-    form.addEventListener('submit', handleAddFormSubmit);
-});
-// =====================================================================
 
+    if (tipoMovimentacaoSelect && categoriaMovimentacaoInput) {
+        tipoMovimentacaoSelect.addEventListener('change', toggleClienteField);
+        categoriaMovimentacaoInput.addEventListener('input', toggleClienteField);
+    }
 
-editForm.addEventListener('submit', handleEditFormSubmit);
-closeModalBtn.addEventListener('click', closeEditModal);
-cancelEditBtn.addEventListener('click', closeEditModal);
-
-// Lógica de filtragem para movimentações
-const searchInput = document.getElementById('search-movimentacoes');
-if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
-        const searchTerm = e.target.value.toLowerCase();
-        const filteredMovimentacoes = allMovimentacoes.filter(mov => 
-            Object.values(mov).some(value => String(value).toLowerCase().includes(searchTerm))
-        );
-        createTable(document.getElementById('movimentacoes-container'), filteredMovimentacoes, 'movimentacoes', CONFIG.SHEET_IDS.movimentacoes);
+    // MELHORIA: Carrega os clientes apenas uma vez no início para popular o dropdown
+    fetchData('clientes', null, CONFIG.SHEET_IDS.clientes).then(() => {
+        populateClientesDropdown(allClientes);
     });
-}
 
-// INICIALIZAÇÃO DA APLICAÇÃO
-const initialPage = window.location.hash.substring(1) || 'dashboard';
-showPage(initialPage);
-
+    // INICIALIZAÇÃO DA APLICAÇÃO
+    const initialPage = window.location.hash.substring(1) || 'dashboard';
+    showPage(initialPage);
 });
