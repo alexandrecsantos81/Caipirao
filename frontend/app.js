@@ -9,11 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ======================= CONFIGURAÇÃO CENTRALIZADA =======================
     const CONFIG = {
         API_BASE_URL: 'https://api-caipirao-maurizzio-procopio.onrender.com',
-        SHEET_IDS: {
-            movimentacoes: 1381900325,
-            clientes: 1386962696,
-            produtos: 18808149
-        }
+        // SHEET_IDS não é mais necessário para as operações da API, pode ser removido.
     };
     // =======================================================================
 
@@ -79,26 +75,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- FUNÇÕES DE BUSCA DE DADOS (FETCH) ---
-    function fetchMovimentacoes() { return fetchData('movimentacoes', document.getElementById('movimentacoes-container'), CONFIG.SHEET_IDS.movimentacoes); }
-    function fetchProdutos() { return fetchData('produtos', document.getElementById('produtos-container')); }
-    
-    async function fetchClientes() {
-        const container = document.getElementById('clientes-container');
-        await fetchData('clientes', container);
-        populateClientesDropdown(allClientes);
-    }
-
     function reloadDataForEntity(entity) {
-        if (entity === 'dashboard' || entity === 'movimentacoes') {
-            return fetchMovimentacoes(); 
-        } else if (entity === 'clientes') {
-            return fetchClientes();
-        } else if (entity === 'produtos') {
-            return fetchProdutos();
-        }
+        const pageContainers = {
+            dashboard: document.getElementById('movimentacoes-container'), // Dashboard depende de movimentações
+            movimentacoes: document.getElementById('movimentacoes-container'),
+            clientes: document.getElementById('clientes-container'),
+            produtos: document.getElementById('produtos-container')
+        };
+        
+        const entityToFetch = (entity === 'dashboard') ? 'movimentacoes' : entity;
+        const container = pageContainers[entity];
+
+        fetchData(entityToFetch, container).then(() => {
+            // Após buscar os dados, executa ações específicas
+            if (entity === 'clientes') {
+                populateClientesDropdown(allClientes);
+            }
+            if (entity === 'dashboard') {
+                updateDashboard(allMovimentacoes);
+            }
+        });
     }
 
-    async function fetchData(entity, container, sheetId) {
+    // ===== CORREÇÃO: Função fetchData totalmente simplificada =====
+    async function fetchData(entity, container) {
         showLoader();
         try {
             const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}`, { headers: getAuthHeaders() });
@@ -110,28 +110,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(`Erro HTTP! Status: ${response.status}`);
             
             const data = await response.json();
-            let processedData;
 
-            // CORREÇÃO 2 e 3 APLICADA AQUI
-            if (entity === 'produtos' || entity === 'clientes') {
-                processedData = data; // Usa o JSON da API do PG diretamente
-            } else {
-                processedData = formatData(data); // Formata os dados do Google Sheets
-            }
+            // Armazena os dados na variável de estado correspondente
+            if (entity === 'movimentacoes') allMovimentacoes = data;
+            else if (entity === 'clientes') allClientes = data;
+            else if (entity === 'produtos') allProdutos = data;
 
-            if (entity === 'movimentacoes') {
-                allMovimentacoes = processedData;
-                if (document.getElementById('page-dashboard').classList.contains('active')) {
-                    updateDashboard(processedData);
-                }
-            } else if (entity === 'clientes') {
-                allClientes = processedData;
-            } else if (entity === 'produtos') {
-                allProdutos = processedData;
-            }
-
+            // Se houver um container para exibir a tabela, cria a tabela
             if (container) {
-                createTable(container, processedData, entity, sheetId);
+                createTable(container, data, entity);
             }
         } catch (error) {
             console.error(`Erro ao buscar ${entity}:`, error);
@@ -152,8 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
 
+        // A API agora trata a capitalização, mas manter no frontend é uma boa prática.
         for (const key in data) {
-            if (typeof data[key] === 'string') {
+            if (typeof data[key] === 'string' && key !== 'valor') { // Não capitalizar o valor
                 data[key] = data[key].toUpperCase();
             }
         }
@@ -165,7 +153,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: getAuthHeaders(),
                 body: JSON.stringify(data)
             });
-            if (!response.ok) throw new Error(await response.text());
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Erro desconhecido');
+            }
             
             showNotification(`${entity.slice(0, -1)} adicionado com sucesso!`, 'success');
             form.reset();
@@ -180,8 +171,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LÓGICA DE EDIÇÃO (UPDATE) ---
     function openEditModal(entity, rowData) {
-        const idKey = (entity === 'movimentacoes') ? 'ID Mov.' : 'id'; // <-- Ajustado para 'id' minúsculo do PG
-        const idValue = rowData[idKey];
+        // ===== CORREÇÃO: A chave do ID é sempre 'id' (minúsculo) agora. =====
+        const idValue = rowData.id;
 
         if (!idValue) {
             showNotification('Não é possível editar um registo sem ID.', 'error');
@@ -190,15 +181,19 @@ document.addEventListener('DOMContentLoaded', () => {
         currentEditInfo = { entity, id: idValue };
         editFormFields.innerHTML = '';
 
+        // Cria os campos do formulário dinamicamente
         for (const key in rowData) {
-            if (key.toLowerCase() === 'sheetid') continue;
+            // Não cria campo para o ID, pois ele não deve ser editado manualmente.
+            if (key.toLowerCase() === 'id') continue;
+
             const fieldWrapper = document.createElement('div');
             const label = document.createElement('label');
             label.className = 'block text-sm font-medium text-slate-700 dark:text-slate-300';
-            label.textContent = key;
+            label.textContent = key; // Usa a chave do JSON como label (ex: 'cliente_nome')
+            
             let input;
-
-            if (key === 'Tipo (Entrada/Saída)') {
+            // Cria um select para o campo 'tipo'
+            if (key === 'tipo') {
                 input = document.createElement('select');
                 input.className = 'form-input';
                 ['ENTRADA', 'SAÍDA'].forEach(opt => {
@@ -206,19 +201,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     option.value = option.textContent = opt;
                     input.appendChild(option);
                 });
-                input.value = rowData[key];
             } else {
                 input = document.createElement('input');
                 input.type = 'text';
-                input.value = rowData[key];
                 input.className = 'form-input';
             }
+            
+            input.value = rowData[key];
             input.id = `edit-${key}`;
             input.name = key;
-            if (key === idKey) {
-                input.disabled = true;
-                input.classList.add('bg-slate-200', 'dark:bg-slate-600');
-            }
+
             fieldWrapper.appendChild(label);
             fieldWrapper.appendChild(input);
             editFormFields.appendChild(fieldWrapper);
@@ -244,7 +236,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const updatedData = Object.fromEntries(formData.entries());
         const { entity, id } = currentEditInfo;
         
-        // Para PUT, a API espera o ID no URL, não no corpo
         const endpoint = `${CONFIG.API_BASE_URL}/api/${entity}/${id}`;
 
         try {
@@ -253,7 +244,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: getAuthHeaders(),
                 body: JSON.stringify(updatedData)
             });
-            if (!response.ok) throw new Error(await response.text());
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Erro desconhecido');
+            }
             showNotification('Registo atualizado com sucesso!', 'success');
             closeEditModal();
             await reloadDataForEntity(entity); 
@@ -267,21 +261,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LÓGICA DE EXCLUSÃO (DELETE) ---
     async function deleteRow(entity, rowData) {
-        const idKey = (entity === 'movimentacoes') ? 'ID Mov.' : 'id'; // <-- Ajustado para 'id' minúsculo do PG
-        const uniqueId = rowData[idKey];
+        // ===== CORREÇÃO: A chave do ID é sempre 'id' (minúsculo) agora. =====
+        const uniqueId = rowData.id;
+
         if (!uniqueId) {
             showNotification('Não foi possível apagar: o registo não tem um ID.', 'error');
             return;
         }
         if (!confirm(`Tem a certeza de que quer apagar o registo com ID: ${uniqueId}?`)) return;
+        
         showLoader();
         try {
-            // A URL para DELETE já estava correta
             const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}/${uniqueId}`, {
                 method: 'DELETE',
                 headers: getAuthHeaders()
             });
-            if (!response.ok) throw new Error(await response.text());
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Erro desconhecido');
+            }
             showNotification('Registo apagado com sucesso!', 'success');
             await reloadDataForEntity(entity);
         } catch (error) {
@@ -293,16 +291,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- FUNÇÕES DE CRIAÇÃO DE INTERFACE (UI) ---
-    function formatData(rawData) {
-        if (!rawData || rawData.length < 2) return [];
-        const [headers, ...dataRows] = rawData;
-        return dataRows.map(row => headers.reduce((obj, header, index) => {
-            obj[header] = row[index];
-            return obj;
-        }, {}));
-    }
+    // A função formatData não é mais necessária e pode ser removida.
 
-    function createTable(container, data, entityName) { // sheetId não é mais necessário aqui
+    // ===== CORREÇÃO: Função createTable simplificada (sem sheetId) =====
+    function createTable(container, data, entityName) {
         container.innerHTML = '';
         if (!data || data.length === 0) {
             container.innerHTML = '<p>Nenhum dado encontrado.</p>';
@@ -330,7 +322,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = document.createElement('tr');
             headers.forEach(header => {
                 const td = document.createElement('td');
-                td.textContent = rowData[header];
+                // Formata a data para um formato mais legível
+                if (header === 'data' && rowData[header]) {
+                    td.textContent = new Date(rowData[header]).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+                } else {
+                    td.textContent = rowData[header];
+                }
                 row.appendChild(td);
             });
             const tdBotao = document.createElement('td');
@@ -357,12 +354,11 @@ document.addEventListener('DOMContentLoaded', () => {
         clienteMovimentacaoSelect.innerHTML = '<option value="">Selecione um cliente</option>';
         if (Array.isArray(clientes)) {
             clientes.forEach(cliente => {
-                const id = cliente.id; // <-- Ajustado para 'id' minúsculo do PG
-                const nome = cliente.nome; // <-- Ajustado para 'nome' minúsculo do PG
-                if (id && nome) {
+                // ===== CORREÇÃO: As chaves são 'id' e 'nome' (minúsculas) =====
+                if (cliente.id && cliente.nome) {
                     const option = document.createElement('option');
-                    option.value = nome;
-                    option.textContent = nome;
+                    option.value = cliente.nome; // O valor enviado para a API é o nome
+                    option.textContent = cliente.nome;
                     clienteMovimentacaoSelect.appendChild(option);
                 }
             });
@@ -384,18 +380,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- LÓGICA DO DASHBOARD ---
     function formatCurrency(value) { return parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
     
+    // ===== CORREÇÃO: Função updateDashboard usando as novas chaves do PostgreSQL =====
     function updateDashboard(data) {
         let totalEntradas = 0, totalSaidas = 0;
         const categoryTotals = {};
         if (Array.isArray(data)) {
             data.forEach(mov => {
                 if (mov && typeof mov === 'object') {
-                    const valor = parseFloat(String(mov.Valor || '0').replace(/[^0-9,.]/g, '').replace(',', '.')) || 0;
-                    const tipoMovimentacao = (mov['Tipo (Entrada/Saída)'] || '').toLowerCase();
+                    // A propriedade é 'valor' (minúsculo) e já é um número.
+                    const valor = parseFloat(mov.valor || 0);
+                    // A propriedade é 'tipo' (minúsculo).
+                    const tipoMovimentacao = (mov.tipo || '').toLowerCase();
+
                     if (tipoMovimentacao === 'entrada') totalEntradas += valor;
                     else if (tipoMovimentacao === 'saída') totalSaidas += valor;
-                    if (mov.Categoria) {
-                        categoryTotals[mov.Categoria] = (categoryTotals[mov.Categoria] || 0) + valor;
+                    
+                    // A propriedade é 'categoria' (minúsculo).
+                    if (mov.categoria) {
+                        categoryTotals[mov.categoria] = (categoryTotals[mov.categoria] || 0) + valor;
                     }
                 }
             });
@@ -442,46 +444,32 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => { window.location.href = 'login.html'; }, 1000);
     });
 
+    // Lógica do Theme Toggle (sem alterações)
     const themeToggleBtn = document.getElementById('theme-toggle-btn');
     const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
     const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-
     const applyTheme = (isDark) => {
-        if (isDark) {
-            document.documentElement.classList.add('dark');
-            themeToggleLightIcon.classList.remove('hidden');
-            themeToggleDarkIcon.classList.add('hidden');
-        } else {
-            document.documentElement.classList.remove('dark');
-            themeToggleLightIcon.classList.add('hidden');
-            themeToggleDarkIcon.classList.remove('hidden');
-        }
+        document.documentElement.classList.toggle('dark', isDark);
+        themeToggleLightIcon.classList.toggle('hidden', !isDark);
+        themeToggleDarkIcon.classList.toggle('hidden', isDark);
         if (document.getElementById('page-dashboard').classList.contains('active') && allMovimentacoes.length > 0) {
-            updateChart(allMovimentacoes.reduce((acc, mov) => {
-                if (mov.Categoria) acc[mov.Categoria] = (acc[mov.Categoria] || 0) + (parseFloat(String(mov.Valor || '0').replace(/[^0-9,.]/g, '').replace(',', '.')) || 0);
-                return acc;
-            }, {}));
+            updateDashboard(allMovimentacoes); // Redesenha o gráfico com as cores corretas
         }
     };
-
     const storedTheme = localStorage.getItem('theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const isDarkMode = storedTheme === 'dark' || (storedTheme === null && systemPrefersDark);
     applyTheme(isDarkMode);
-
     themeToggleBtn.addEventListener('click', () => {
-        const isDark = document.documentElement.classList.toggle('dark');
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        applyTheme(isDark);
+        const newIsDark = document.documentElement.classList.toggle('dark');
+        localStorage.setItem('theme', newIsDark ? 'dark' : 'light');
+        applyTheme(newIsDark);
     });
 
+    // Associa o submit a todos os formulários de adição
     document.querySelectorAll('form[id^="add-"]').forEach(form => {
         let entityName = form.id.replace('add-', '').replace('-form', '');
-        if (entityName === 'movimentacao') {
-            entityName = 'movimentacoes';
-        } else {
-            entityName += 's';
-        }
+        entityName = (entityName === 'movimentacao') ? 'movimentacoes' : `${entityName}s`;
         form.dataset.entity = entityName;
         form.addEventListener('submit', handleAddFormSubmit);
     });
@@ -490,6 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
     closeModalBtn.addEventListener('click', closeEditModal);
     cancelEditBtn.addEventListener('click', closeEditModal);
 
+    // Lógica da barra de pesquisa (sem alterações)
     const searchInput = document.getElementById('search-movimentacoes');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
@@ -497,7 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const filteredMovimentacoes = allMovimentacoes.filter(mov => 
                 Object.values(mov).some(value => String(value).toLowerCase().includes(searchTerm))
             );
-            createTable(document.getElementById('movimentacoes-container'), filteredMovimentacoes, 'movimentacoes', CONFIG.SHEET_IDS.movimentacoes);
+            createTable(document.getElementById('movimentacoes-container'), filteredMovimentacoes, 'movimentacoes');
         });
     }
 
@@ -506,7 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
         categoriaMovimentacaoInput.addEventListener('input', toggleClienteField);
     }
 
-    // Carrega os clientes uma vez no início para popular o dropdown
+    // Carrega os clientes uma vez no início para popular o dropdown de movimentações
     fetchData('clientes', null).then(() => {
         populateClientesDropdown(allClientes);
     });
