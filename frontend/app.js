@@ -290,60 +290,86 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ===== CORREÇÃO: Função createTable simplificada (sem sheetId) =====
-    function createTable(container, data, entityName) {
-        container.innerHTML = '';
-        if (!data || data.length === 0) {
-            container.innerHTML = '<p>Nenhum dado encontrado.</p>';
-            return;
-        }
-        const table = document.createElement('table');
-        table.className = 'w-full text-left border-collapse';
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        const headers = Object.keys(data[0] || {});
-        headers.forEach(headerText => {
-            const th = document.createElement('th');
-            th.textContent = headerText;
-            headerRow.appendChild(th);
-        });
-        const thAcoes = document.createElement('th');
-        thAcoes.textContent = 'Ações';
-        thAcoes.className = 'text-right';
-        headerRow.appendChild(thAcoes);
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-        const tbody = document.createElement('tbody');
-        data.forEach(rowData => {
-            if (Object.values(rowData).every(val => val === null || val === '')) return;
-            const row = document.createElement('tr');
-            headers.forEach(header => {
-                const td = document.createElement('td');
-                // Formata a data para um formato mais legível
-                if (header === 'data' && rowData[header]) {
-                    td.textContent = new Date(rowData[header]).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-                } else {
-                    td.textContent = rowData[header];
-                }
-                row.appendChild(td);
-            });
-            const tdBotao = document.createElement('td');
-            tdBotao.className = 'text-right space-x-2';
-            const editButton = document.createElement('button');
-            editButton.textContent = 'Editar';
-            editButton.className = 'bg-blue-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-blue-600';
-            editButton.addEventListener('click', () => openEditModal(entityName, rowData));
-            tdBotao.appendChild(editButton);
-            const deleteButton = document.createElement('button');
-            deleteButton.textContent = 'Apagar';
-            deleteButton.className = 'bg-red-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-red-600';
-            deleteButton.addEventListener('click', () => deleteRow(entityName, rowData));
-            tdBotao.appendChild(deleteButton);
-            row.appendChild(tdBotao);
-            tbody.appendChild(row);
-        });
-        table.appendChild(tbody);
-        container.appendChild(table);
+function createTable(container, data, entityName) {
+    container.innerHTML = '';
+    if (!data || data.length === 0) {
+        container.innerHTML = '<p>Nenhum dado encontrado.</p>';
+        return;
     }
+
+    // =====> MUDANÇA 1: Adiciona a classe ao container da tabela <=====
+    // Esta classe ativa os estilos responsivos que definimos no style.css.
+    container.classList.add('responsive-table-container');
+
+    const table = document.createElement('table');
+    table.className = 'w-full text-left border-collapse';
+    
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    
+    // Extrai os cabeçalhos do primeiro objeto de dados para garantir a ordem correta.
+    const headers = Object.keys(data[0] || {});
+    
+    headers.forEach(headerText => {
+        const th = document.createElement('th');
+        th.textContent = headerText;
+        headerRow.appendChild(th);
+    });
+    
+    const thAcoes = document.createElement('th');
+    thAcoes.textContent = 'Ações';
+    thAcoes.className = 'text-right';
+    headerRow.appendChild(thAcoes);
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
+    const tbody = document.createElement('tbody');
+    data.forEach(rowData => {
+        // Ignora linhas que possam estar vazias na fonte de dados.
+        if (Object.values(rowData).every(val => val === null || val === '')) return;
+        
+        const row = document.createElement('tr');
+        
+        headers.forEach(header => {
+            const td = document.createElement('td');
+            
+            // =====> MUDANÇA 2: Adiciona o atributo data-label a cada célula <=====
+            // O CSS usará este atributo para criar os "rótulos" no layout de card.
+            td.setAttribute('data-label', header); 
+            
+            // Mantém a formatação de data existente.
+            if (header === 'data' && rowData[header]) {
+                td.textContent = new Date(rowData[header]).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+            } else {
+                td.textContent = rowData[header];
+            }
+            row.appendChild(td);
+        });
+        
+        const tdBotao = document.createElement('td');
+        // Adiciona o label para a coluna de ações também, para consistência.
+        tdBotao.setAttribute('data-label', 'Ações'); 
+        tdBotao.className = 'text-right space-x-2';
+        
+        const editButton = document.createElement('button');
+        editButton.textContent = 'Editar';
+        editButton.className = 'bg-blue-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-blue-600';
+        editButton.addEventListener('click', () => openEditModal(entityName, rowData));
+        tdBotao.appendChild(editButton);
+        
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Apagar';
+        deleteButton.className = 'bg-red-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-red-600';
+        deleteButton.addEventListener('click', () => deleteRow(entityName, rowData));
+        tdBotao.appendChild(deleteButton);
+        
+        row.appendChild(tdBotao);
+        tbody.appendChild(row);
+    });
+    
+    table.appendChild(tbody);
+    container.appendChild(table);
+}
 
     function populateClientesDropdown(clientes) {
         if (!clienteMovimentacaoSelect) return;
