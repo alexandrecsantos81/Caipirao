@@ -1,0 +1,38 @@
+### (1 ) Fazer Login para Obter o Token
+# @name loginRequest
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+    "email": "timbo.correa@gmail.com",
+    "senha": "123456"
+}
+
+
+### (2 ) Criar um Novo Cliente
+POST http://localhost:3000/api/clientes
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRpbWJvLmNvcnJlYUBnbWFpbC5jb20iLCJpYXQiOjE3NTMyNjc0MzIsImV4cCI6MTc1MzI5NjIzMn0.e6siAFLolHrvUuoavpgUaPA4Nq0lBrfbQYNrcQrdKAk
+
+{
+    "nome": "CLIENTE CRIADO PELO REST CLIENT",
+    "contato": "555555555",
+    "endereco": "VS CODE, NÚMERO 1"
+}
+
+### (3 ) Atualizar um Cliente Existente
+PUT http://localhost:3000/api/clientes/8
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRpbWJvLmNvcnJlYUBnbWFpbC5jb20iLCJpYXQiOjE3NTMyNjc0MzIsImV4cCI6MTc1MzI5NjIzMn0.e6siAFLolHrvUuoavpgUaPA4Nq0lBrfbQYNrcQrdKAk
+
+{
+    "nome": "CLIENTE ATUALIZADO PELO REST CLIENT",
+    "contato": "123456789",
+    "endereco": "RUA ATUALIZADA, 200"
+}
+
+### (4 ) Apagar um Cliente
+DELETE http://localhost:3000/api/clientes/8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRpbWJvLmNvcnJlYUBnbWFpbC5jb20iLCJpYXQiOjE3NTMyNjc0MzIsImV4cCI6MTc1MzI5NjIzMn0.e6siAFLolHrvUuoavpgUaPA4Nq0lBrfbQYNrcQrdKAk
+
+
