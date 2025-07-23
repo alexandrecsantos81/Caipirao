@@ -4,32 +4,37 @@ const pool = require('../db'); // Importa a nossa conexão com o PostgreSQL
 
 // GET /api/movimentacoes - Listar todas as movimentações
 router.get('/', async (req, res) => {
-try {
-    const todasMovimentacoes = await pool.query(
-        `SELECT
-            m.id,
-            m.data,
-            m.tipo,
-            m.categoria,
-            m.descricao,
-            m.valor,
-            m.responsavel,
-            m.observacoes,
-            c.nome AS cliente_nome -- Usamos um alias para clareza
-        FROM
-            movimentacoes m
-        LEFT JOIN
-            clientes c ON m.cliente_id = c.id
-        ORDER BY
-            m.data DESC, m.id DESC` // Ordena pela data mais recente
-    );
+    try {
+        // Query SQL corrigida e mais explícita
+        const query = `
+            SELECT
+                m.id,
+                m.data,
+                m.tipo,
+                m.categoria,
+                m.descricao,
+                m.valor,
+                m.responsavel,
+                m.observacoes,
+                c.nome AS cliente_nome
+            FROM
+                movimentacoes AS m
+            LEFT JOIN
+                clientes AS c ON m.cliente_id = c.id
+            ORDER BY
+                m.data DESC, m.id DESC;
+        `;
+        
+        const todasMovimentacoes = await pool.query(query);
 
-    res.json(todasMovimentacoes.rows);
+        res.json(todasMovimentacoes.rows);
 
-} catch (err) {
-    console.error('Erro ao buscar movimentações:', err.message);
-    res.status(500).json({ error: "Erro no servidor ao buscar movimentações." });
-}});
+    } catch (err) {
+        // Log de erro mais detalhado no servidor para facilitar a depuração futura
+        console.error('Erro detalhado ao buscar movimentações:', err.stack);
+        res.status(500).json({ error: "Erro no servidor ao buscar movimentações." });
+    }
+});
 
 // POST /api/movimentacoes - Criar uma nova movimentação
 router.post('/', async (req, res) => {
