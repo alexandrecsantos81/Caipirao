@@ -137,14 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const entity = form.dataset.entity;
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
-
-        // A API agora trata a capitalização, mas manter no frontend é uma boa prática.
-        for (const key in data) {
-            if (typeof data[key] === 'string' && key !== 'valor') { // Não capitalizar o valor
-                data[key] = data[key].toUpperCase();
-            }
-        }
-        
+   
         showLoader();
         try {
             const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}`, {
@@ -379,6 +372,7 @@ function createTable(container, data, entityName) {
                 // ===== CORREÇÃO: As chaves são 'id' e 'nome' (minúsculas) =====
                 if (cliente.id && cliente.nome) {
                     const option = document.createElement('option');
+                    const nomeClienteUpperCase = cliente.nome.toUpperCase();
                     option.value = cliente.nome; // O valor enviado para a API é o nome
                     option.textContent = cliente.nome;
                     clienteMovimentacaoSelect.appendChild(option);
