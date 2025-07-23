@@ -35,4 +35,32 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRpbWJvL
 DELETE http://localhost:3000/api/clientes/8
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRpbWJvLmNvcnJlYUBnbWFpbC5jb20iLCJpYXQiOjE3NTMyNjc0MzIsImV4cCI6MTc1MzI5NjIzMn0.e6siAFLolHrvUuoavpgUaPA4Nq0lBrfbQYNrcQrdKAk
 
+### (5) Criar um Produto (POST):
+POST http://localhost:3000/api/produtos
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRpbWJvLmNvcnJlYUBnbWFpbC5jb20iLCJpYXQiOjE3NTMyNjc0MzIsImV4cCI6MTc1MzI5NjIzMn0.e6siAFLolHrvUuoavpgUaPA4Nq0lBrfbQYNrcQrdKAk
 
+{
+    "nome": "FRANGO CONGELADO KG",
+    "descricao": "FRANGO INTEIRO TEMPERADO",
+    "preco": 25.50
+}
+
+### (6) Listar Produtos (GET ):
+GET http://localhost:3000/api/produtos
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRpbWJvLmNvcnJlYUBnbWFpbC5jb20iLCJpYXQiOjE3NTMyNjc0MzIsImV4cCI6MTc1MzI5NjIzMn0.e6siAFLolHrvUuoavpgUaPA4Nq0lBrfbQYNrcQrdKAk
+
+### (7) Atualiza produto
+PUT http://localhost:3000/api/produtos/1
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRpbWJvLmNvcnJlYUBnbWFpbC5jb20iLCJpYXQiOjE3NTMyNjc0MzIsImV4cCI6MTc1MzI5NjIzMn0.e6siAFLolHrvUuoavpgUaPA4Nq0lBrfbQYNrcQrdKAk
+
+{
+    "nome": "FRANGO CONGELADO KG",
+    "descricao": "FRANGO INTEIRO TEMPERADO ESPECIAL",
+    "preco": 27.00
+}
+
+### Apagar um Produto (DELETE )
+DELETE http://localhost:3000/api/produtos/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRpbWJvLmNvcnJlYUBnbWFpbC5jb20iLCJpYXQiOjE3NTMyNjc0MzIsImV4cCI6MTc1MzI5NjIzMn0.e6siAFLolHrvUuoavpgUaPA4Nq0lBrfbQYNrcQrdKAk
