@@ -1,7 +1,8 @@
-# Dependências do Node
-node_modules/
+# Ignorar a pasta de dependências do Node.js
+node_modules
 
-# Ficheiros de ambiente
+# Ignorar o ficheiro de variáveis de ambiente (MUITO IMPORTANTE!)
 .env
-.json
 
+# Ignorar ficheiros de log ou de debug
+npm-debug.log

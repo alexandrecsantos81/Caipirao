@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // ======================= CONFIGURAÇÃO CENTRALIZADA =======================
     const CONFIG = {
         API_BASE_URL: 'https://api-caipirao-maurizzio-procopio.onrender.com',
-        // SHEET_IDS não é mais necessário para as operações da API, pode ser removido.
     };
     // =======================================================================
 
@@ -289,9 +288,6 @@ document.addEventListener('DOMContentLoaded', () => {
             hideLoader();
         }
     }
-
-    // --- FUNÇÕES DE CRIAÇÃO DE INTERFACE (UI) ---
-    // A função formatData não é mais necessária e pode ser removida.
 
     // ===== CORREÇÃO: Função createTable simplificada (sem sheetId) =====
     function createTable(container, data, entityName) {

@@ -104,7 +104,7 @@ try {
          SET data = $1, tipo = $2, categoria = $3, descricao = $4, valor = $5, responsavel = $6, observacoes = $7, cliente_id = $8
          WHERE id = $9
          RETURNING *`,
-        [data, tipo.toUpperCase(), categoria.toUpperCase(), descricao, valor, responsavel, observacoes, clienteId, id]
+        [data, tipo.toUpperCase(), categoria.toUpperCase(), descricaotoUpperCase(), valor, responsaveltoUpperCase(), observacoestoUpperCase(), clienteId, id]
     );
 
     if (movimentacaoAtualizada.rowCount === 0) {

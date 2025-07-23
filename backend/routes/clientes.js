@@ -37,7 +37,7 @@ router.post('/', async (req, res) => {
         // A sintaxe ($1, $2, $3) é uma medida de segurança (previne SQL Injection)
         const novoCliente = await pool.query(
             "INSERT INTO clientes (nome, contato, endereco) VALUES ($1, $2, $3) RETURNING *",
-            [nome, contato, endereco]
+            [nome.toUpperCase(), contato, endereco]
         );
 
         // 4. Retorna o cliente recém-criado com o status 201 (Created)
