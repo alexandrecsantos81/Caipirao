@@ -33,7 +33,6 @@
         @apply bg-slate-50 border-slate-300 text-slate-900; /* Cores para o modo claro */
         @apply focus:border-blue-500 focus:ring-blue-500;
         
-        /* --- CORREÇÃO APLICADA AQUI --- */
         /* Estilos para o modo escuro com MAIOR CONTRASTE */
         @apply dark:bg-slate-900 dark:border-slate-600 dark:text-slate-50 dark:placeholder-slate-400;
         @apply dark:focus:border-blue-500 dark:focus:ring-blue-500;
@@ -41,7 +40,6 @@
 
     /* Estilo para os cabeçalhos das tabelas */
     th {
-        /* --- CORREÇÃO APLICADA AQUI --- */
         @apply p-3 font-semibold text-left text-xs uppercase tracking-wider;
         @apply text-slate-600 dark:text-slate-300; /* Cor mais clara para o modo escuro */
     }
@@ -49,7 +47,6 @@
     /* Estilo para as células das tabelas */
     td {
         @apply p-3 whitespace-nowrap;
-        /* --- MELHORIA ADICIONADA AQUI --- */
         @apply text-slate-800 dark:text-slate-200; /* Garante bom contraste nas células */
     }
 
@@ -60,4 +57,54 @@
     tbody tr:hover {
         @apply bg-slate-50 dark:bg-slate-700/50;
     }
+
+    /*
+    ================================================================
+    ===> INÍCIO: CÓDIGO ADICIONADO PARA TABELAS RESPONSIVAS <===
+    ================================================================
+    */
+    .responsive-table-container {
+        @apply block w-full overflow-x-auto;
+    }
+
+    @media (max-width: 768px) {
+        /* Esconde o cabeçalho da tabela tradicional em ecrãs pequenos */
+        .responsive-table-container thead {
+            @apply hidden;
+        }
+
+        /* Transforma os elementos da tabela para se comportarem como blocos */
+        .responsive-table-container table,
+        .responsive-table-container tbody,
+        .responsive-table-container tr,
+        .responsive-table-container td {
+            @apply block;
+        }
+
+        /* Estiliza cada linha (<tr>) como um "card" individual */
+        .responsive-table-container tr {
+            @apply border border-slate-200 dark:border-slate-700 rounded-lg mb-4 p-4;
+        }
+
+        /* Adiciona um "label" antes de cada célula, usando o atributo data-label */
+        .responsive-table-container td::before {
+            content: attr(data-label); /* Pega o texto do atributo data-label */
+            @apply float-left font-bold mr-2 text-slate-500 dark:text-slate-400;
+        }
+
+        /* Ajusta o alinhamento do conteúdo da célula e remove a borda inferior */
+        .responsive-table-container td {
+            @apply text-right border-b-0;
+        }
+
+        /* Garante que a última célula (botões de ação) tenha um tratamento especial */
+        .responsive-table-container td:last-child {
+            @apply text-right pt-4 mt-2 border-t border-slate-200 dark:border-slate-700;
+        }
+    }
+    /*
+    ================================================================
+    ===> FIM: CÓDIGO ADICIONADO PARA TABELAS RESPONSIVAS <===
+    ================================================================
+    */
 }
