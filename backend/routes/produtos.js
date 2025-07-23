@@ -63,7 +63,7 @@ router.put('/:id', async (req, res) => {
         // 3. Executa a query de atualização no banco
         const produtoAtualizado = await pool.query(
             "UPDATE produtos SET nome = $1, descricao = $2, preco = $3 WHERE id = $4 RETURNING *",
-            [nome, descricao, preco, id]
+            [nome.toUpperCase(), descricaotoUpperCase(), preco, id]
         );
 
         // 4. Verifica se a atualização realmente aconteceu
