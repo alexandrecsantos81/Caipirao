@@ -5,7 +5,8 @@ const { google } = require('googleapis');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const clientesRouter = require('./routes/clientes'); // <-- Integra o Novo Roteador no Servidor Principal (server.js)
+const clientesRouter = require('./routes/clientes');
+const produtosRouter = require('./routes/produtos');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -39,6 +40,7 @@ const corsOptions = {
 app.use(cors(corsOptions)); // <-- 1. PRIMEIRO: Aplica as políticas de CORS a TODAS as requisições.
 app.use(express.json()); // <-- 2. SEGUNDO: Habilita o processamento de JSON para TODAS as rotas que precisarem.
 app.use('/api/clientes', clientesRouter); // <-- 3. TERCEIRO: Agora, direcione as requisições para os roteadores corretos.
+app.use('/api/produtos', produtosRouter);
 
 // --- Configuração da Autenticação Google ---
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
