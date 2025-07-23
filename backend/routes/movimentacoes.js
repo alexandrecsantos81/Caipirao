@@ -82,42 +82,53 @@ try {
 
 // PUT /api/movimentacoes/:id - Atualizar uma movimentação
 router.put('/:id', async (req, res) => {
-// DENTRO DE: router.put('/:id', async (req, res) => { ... });
+    try {
+        const { id } = req.params;
+        // =====> MUDANÇA 1: O nome do cliente vem como 'cliente_nome' do formulário de edição <=====
+        const { data, tipo, categoria, descricao, valor, responsavel, observacoes, cliente_nome } = req.body;
 
-try {
-    const { id } = req.params;
-    const { data, tipo, categoria, descricao, valor, responsavel, observacoes, cliente } = req.body;
-
-    // A lógica para encontrar o cliente_id é a mesma da rota POST
-    let clienteId = null;
-    if (cliente && cliente.trim() !== '') {
-        const clienteResult = await pool.query("SELECT id FROM clientes WHERE nome = $1", [cliente.toUpperCase()]);
-        if (clienteResult.rows.length > 0) {
-            clienteId = clienteResult.rows[0].id;
-        } else {
-            return res.status(404).json({ error: `Cliente '${cliente}' não encontrado.` });
+        let clienteId = null;
+        // =====> MUDANÇA 2: A lógica para encontrar o ID do cliente deve usar 'cliente_nome' <=====
+        if (cliente_nome && cliente_nome.trim() !== '') {
+            const clienteResult = await pool.query("SELECT id FROM clientes WHERE nome = $1", [cliente_nome.toUpperCase()]);
+            if (clienteResult.rows.length > 0) {
+                clienteId = clienteResult.rows[0].id;
+            } else {
+                // Se o cliente não for encontrado, podemos optar por não falhar, apenas deixar o ID nulo,
+                // ou retornar um erro. Deixar nulo é mais flexível.
+                console.warn(`Cliente '${cliente_nome}' não encontrado ao atualizar. O cliente_id será definido como nulo.`);
+            }
         }
+
+        const movimentacaoAtualizada = await pool.query(
+            `UPDATE movimentacoes
+             SET data = $1, tipo = $2, categoria = $3, descricao = $4, valor = $5, responsavel = $6, observacoes = $7, cliente_id = $8
+             WHERE id = $9
+             RETURNING *`,
+            // =====> MUDANÇA 3: Corrigido o array de valores <=====
+            [
+                data,
+                tipo.toUpperCase(),
+                categoria.toUpperCase(),
+                descricao, // Descrição geralmente não deve ser forçada para maiúsculas
+                valor,
+                responsavel, // Responsável também pode manter o case original
+                observacoes,
+                clienteId,
+                id
+            ]
+        );
+
+        if (movimentacaoAtualizada.rowCount === 0) {
+            return res.status(404).json({ error: "Movimentação não encontrada." });
+        }
+
+        res.json(movimentacaoAtualizada.rows[0]);
+
+    } catch (err) {
+        console.error('Erro ao atualizar movimentação:', err.message);
+        res.status(500).json({ error: "Erro no servidor ao atualizar movimentação." });
     }
-
-    const movimentacaoAtualizada = await pool.query(
-        `UPDATE movimentacoes
-         SET data = $1, tipo = $2, categoria = $3, descricao = $4, valor = $5, responsavel = $6, observacoes = $7, cliente_id = $8
-         WHERE id = $9
-         RETURNING *`,
-        [data, tipo.toUpperCase(), categoria.toUpperCase(), descricaotoUpperCase(), valor, responsaveltoUpperCase(), observacoestoUpperCase(), clienteId, id]
-    );
-
-    if (movimentacaoAtualizada.rowCount === 0) {
-        return res.status(404).json({ error: "Movimentação não encontrada." });
-    }
-
-    res.json(movimentacaoAtualizada.rows[0]);
-
-} catch (err) {
-    console.error('Erro ao atualizar movimentação:', err.message);
-    res.status(500).json({ error: "Erro no servidor ao atualizar movimentação." });
-}
-
 });
 
 // DELETE /api/movimentacoes/:id - Apagar uma movimentação
