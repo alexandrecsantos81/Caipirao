@@ -56,14 +56,20 @@ router.put('/:id', async (req, res) => {
         const { nome, descricao, preco } = req.body;
 
         // 2. Validação: verifica se nome e preço foram fornecidos
-        if (!nome || !preco) {
+        if (!nome || preco === null || preco === undefined) { // Verificação mais robusta para o preço
             return res.status(400).json({ error: "Os campos 'nome' e 'preco' são obrigatórios." });
         }
 
         // 3. Executa a query de atualização no banco
         const produtoAtualizado = await pool.query(
             "UPDATE produtos SET nome = $1, descricao = $2, preco = $3 WHERE id = $4 RETURNING *",
-            [nome.toUpperCase(), descricaotoUpperCase(), preco, id]
+            // =====> MUDANÇA: Corrigido o array de valores <=====
+            [
+                nome.toUpperCase(),      // Força o nome do produto para maiúsculas por padrão
+                descricao,               // Descrição mantém o case original
+                preco,                   // Preço já é um número
+                id
+            ]
         );
 
         // 4. Verifica se a atualização realmente aconteceu
@@ -76,6 +82,11 @@ router.put('/:id', async (req, res) => {
 
     } catch (err) {
         console.error('Erro ao atualizar produto:', err.message);
+        // Adiciona um log mais detalhado para o erro de 'NaN' se ele vier do banco
+        if (err.message.includes('invalid input syntax for type numeric')) {
+             console.error("ERRO DETALHADO: O valor enviado para 'preco' não é um número válido.");
+             return res.status(400).json({ error: "O valor do preço deve ser um número válido." });
+        }
         res.status(500).json({ error: "Erro no servidor ao atualizar produto." });
     }
 });
