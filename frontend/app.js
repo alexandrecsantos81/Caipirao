@@ -79,16 +79,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- FUNÇÕES DE BUSCA DE DADOS (FETCH) ---
-    // CORREÇÃO: Adicionado 'return' para que a promessa de fetchData seja retornada
     function fetchMovimentacoes() { return fetchData('movimentacoes', document.getElementById('movimentacoes-container'), CONFIG.SHEET_IDS.movimentacoes); }
-    function fetchProdutos() { return fetchData('produtos', document.getElementById('produtos-container'), CONFIG.SHEET_IDS.produtos); }
+    function fetchProdutos() { return fetchData('produtos', document.getElementById('produtos-container')); }
     
-    // CORREÇÃO: fetchClientes agora é async e usa await para garantir a ordem
     async function fetchClientes() {
         const container = document.getElementById('clientes-container');
-        // Espera que os dados sejam buscados antes de tentar popular o dropdown
-        await fetchData('clientes', container, CONFIG.SHEET_IDS.clientes);
-        // 'allClientes' agora está garantidamente atualizado
+        await fetchData('clientes', container);
         populateClientesDropdown(allClientes);
     }
 
@@ -112,21 +108,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             if (!response.ok) throw new Error(`Erro HTTP! Status: ${response.status}`);
+            
             const data = await response.json();
-            const formattedData = formatData(data);
+            let processedData;
+
+            // CORREÇÃO 2 e 3 APLICADA AQUI
+            if (entity === 'produtos' || entity === 'clientes') {
+                processedData = data; // Usa o JSON da API do PG diretamente
+            } else {
+                processedData = formatData(data); // Formata os dados do Google Sheets
+            }
 
             if (entity === 'movimentacoes') {
-                allMovimentacoes = formattedData;
+                allMovimentacoes = processedData;
                 if (document.getElementById('page-dashboard').classList.contains('active')) {
-                    updateDashboard(formattedData);
+                    updateDashboard(processedData);
                 }
             } else if (entity === 'clientes') {
-                allClientes = formattedData;
+                allClientes = processedData;
             } else if (entity === 'produtos') {
-                allProdutos = formattedData;
+                allProdutos = processedData;
             }
-            if (container) { // Só cria a tabela se um container for fornecido
-                createTable(container, formattedData, entity, sheetId);
+
+            if (container) {
+                createTable(container, processedData, entity, sheetId);
             }
         } catch (error) {
             console.error(`Erro ao buscar ${entity}:`, error);
@@ -174,14 +179,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- LÓGICA DE EDIÇÃO (UPDATE) ---
-    function openEditModal(entity, rowData, sheetId) {
-        const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
+    function openEditModal(entity, rowData) {
+        const idKey = (entity === 'movimentacoes') ? 'ID Mov.' : 'id'; // <-- Ajustado para 'id' minúsculo do PG
         const idValue = rowData[idKey];
+
         if (!idValue) {
             showNotification('Não é possível editar um registo sem ID.', 'error');
             return;
         }
-        currentEditInfo = { entity, sheetId, id: idValue };
+        currentEditInfo = { entity, id: idValue };
         editFormFields.innerHTML = '';
 
         for (const key in rowData) {
@@ -237,10 +243,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(editForm);
         const updatedData = Object.fromEntries(formData.entries());
         const { entity, id } = currentEditInfo;
-        updatedData.id = id;
+        
+        // Para PUT, a API espera o ID no URL, não no corpo
+        const endpoint = `${CONFIG.API_BASE_URL}/api/${entity}/${id}`;
 
         try {
-            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}`, {
+            const response = await fetch(endpoint, {
                 method: 'PUT',
                 headers: getAuthHeaders(),
                 body: JSON.stringify(updatedData)
@@ -258,8 +266,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- LÓGICA DE EXCLUSÃO (DELETE) ---
-    async function deleteRow(entity, rowData, sheetId) {
-        const idKey = entity === 'movimentacoes' ? 'ID Mov.' : 'ID';
+    async function deleteRow(entity, rowData) {
+        const idKey = (entity === 'movimentacoes') ? 'ID Mov.' : 'id'; // <-- Ajustado para 'id' minúsculo do PG
         const uniqueId = rowData[idKey];
         if (!uniqueId) {
             showNotification('Não foi possível apagar: o registo não tem um ID.', 'error');
@@ -268,7 +276,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!confirm(`Tem a certeza de que quer apagar o registo com ID: ${uniqueId}?`)) return;
         showLoader();
         try {
-            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}?id=${uniqueId}&sheetId=${sheetId}`, {
+            // A URL para DELETE já estava correta
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/${entity}/${uniqueId}`, {
                 method: 'DELETE',
                 headers: getAuthHeaders()
             });
@@ -293,7 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, {}));
     }
 
-    function createTable(container, data, entityName, sheetId) {
+    function createTable(container, data, entityName) { // sheetId não é mais necessário aqui
         container.innerHTML = '';
         if (!data || data.length === 0) {
             container.innerHTML = '<p>Nenhum dado encontrado.</p>';
@@ -317,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
         table.appendChild(thead);
         const tbody = document.createElement('tbody');
         data.forEach(rowData => {
-            if (Object.values(rowData).every(val => val === '')) return;
+            if (Object.values(rowData).every(val => val === null || val === '')) return;
             const row = document.createElement('tr');
             headers.forEach(header => {
                 const td = document.createElement('td');
@@ -329,12 +338,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const editButton = document.createElement('button');
             editButton.textContent = 'Editar';
             editButton.className = 'bg-blue-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-blue-600';
-            editButton.addEventListener('click', () => openEditModal(entityName, rowData, sheetId));
+            editButton.addEventListener('click', () => openEditModal(entityName, rowData));
             tdBotao.appendChild(editButton);
             const deleteButton = document.createElement('button');
             deleteButton.textContent = 'Apagar';
             deleteButton.className = 'bg-red-500 text-white text-xs font-semibold py-1 px-2 rounded-md hover:bg-red-600';
-            deleteButton.addEventListener('click', () => deleteRow(entityName, rowData, sheetId));
+            deleteButton.addEventListener('click', () => deleteRow(entityName, rowData));
             tdBotao.appendChild(deleteButton);
             row.appendChild(tdBotao);
             tbody.appendChild(row);
@@ -348,8 +357,8 @@ document.addEventListener('DOMContentLoaded', () => {
         clienteMovimentacaoSelect.innerHTML = '<option value="">Selecione um cliente</option>';
         if (Array.isArray(clientes)) {
             clientes.forEach(cliente => {
-                const id = cliente.ID;
-                const nome = cliente.Nome;
+                const id = cliente.id; // <-- Ajustado para 'id' minúsculo do PG
+                const nome = cliente.nome; // <-- Ajustado para 'nome' minúsculo do PG
                 if (id && nome) {
                     const option = document.createElement('option');
                     option.value = nome;
@@ -447,8 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
             themeToggleLightIcon.classList.add('hidden');
             themeToggleDarkIcon.classList.remove('hidden');
         }
-        // Redesenha o gráfico com as cores do novo tema
-        if (document.getElementById('page-dashboard').classList.contains('active')) {
+        if (document.getElementById('page-dashboard').classList.contains('active') && allMovimentacoes.length > 0) {
             updateChart(allMovimentacoes.reduce((acc, mov) => {
                 if (mov.Categoria) acc[mov.Categoria] = (acc[mov.Categoria] || 0) + (parseFloat(String(mov.Valor || '0').replace(/[^0-9,.]/g, '').replace(',', '.')) || 0);
                 return acc;
@@ -471,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let entityName = form.id.replace('add-', '').replace('-form', '');
         if (entityName === 'movimentacao') {
             entityName = 'movimentacoes';
-        } else if (entityName.endsWith('o') || entityName.endsWith('e')) {
+        } else {
             entityName += 's';
         }
         form.dataset.entity = entityName;
@@ -498,8 +506,8 @@ document.addEventListener('DOMContentLoaded', () => {
         categoriaMovimentacaoInput.addEventListener('input', toggleClienteField);
     }
 
-    // MELHORIA: Carrega os clientes apenas uma vez no início para popular o dropdown
-    fetchData('clientes', null, CONFIG.SHEET_IDS.clientes).then(() => {
+    // Carrega os clientes uma vez no início para popular o dropdown
+    fetchData('clientes', null).then(() => {
         populateClientesDropdown(allClientes);
     });
 
