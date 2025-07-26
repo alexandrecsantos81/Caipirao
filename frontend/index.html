@@ -35,15 +35,11 @@
         <!-- ================ SIDEBAR (MENU ) ================== -->
         <!-- ================================================== -->
         <aside id="sidebar" class="bg-white dark:bg-slate-800 w-64 flex-shrink-0 p-4 shadow-lg fixed h-screen lg:relative transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out z-40 flex flex-col">
-            
-            <!-- Logo -->
-            <div class="mb-10 text-center flex-shrink-0"> <!-- Adicionado flex-shrink-0 para garantir que não encolha -->
+            <div class="flex-shrink-0 mb-10 text-center">
                 <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400">Caipirão</h1>
                 <p class="text-sm text-slate-500 dark:text-slate-400">Gestão Financeira</p>
             </div>
-
-            <!-- Navegação -->
-            <nav class="flex-grow"> <!-- A classe flex-grow aqui agora vai funcionar corretamente -->
+            <nav class="flex-grow">
                 <ul>
                     <li><a href="#dashboard" class="nav-link flex items-center py-2.5 px-4 my-2 rounded-lg transition duration-200 hover:bg-blue-50 dark:hover:bg-slate-700">📊 Dashboard</a></li>
                     <li><a href="#movimentacoes" class="nav-link flex items-center py-2.5 px-4 my-2 rounded-lg transition duration-200 hover:bg-blue-50 dark:hover:bg-slate-700">🔄 Movimentações</a></li>
@@ -51,15 +47,12 @@
                     <li><a href="#produtos" class="nav-link flex items-center py-2.5 px-4 my-2 rounded-lg transition duration-200 hover:bg-blue-50 dark:hover:bg-slate-700">📦 Produtos</a></li>
                 </ul>
             </nav>
-
-            <!-- Botão de Logout -->
-            <div class="flex-shrink-0"> <!-- Adicionado flex-shrink-0 para garantir que não encolha -->
+            <div class="flex-shrink-0">
                 <button id="logout-btn" class="w-full flex items-center justify-center bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition duration-200">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                     Logout
                 </button>
             </div>
-            
         </aside>
 
         <!-- Overlay para escurecer a tela quando o menu estiver aberto em mobile -->
@@ -68,9 +61,7 @@
         <!-- ================================================== -->
         <!-- =============== CONTEÚDO PRINCIPAL =============== -->
         <!-- ================================================== -->
-        <main id="main-content" class="flex-1 flex flex-col w-full lg:w-auto">
-            
-            <!-- Header do conteúdo principal, com o botão hambúrguer -->
+        <main id="main-content" class="w-full lg:w-auto">
             <header class="bg-white dark:bg-slate-800 shadow-sm p-4 flex justify-between items-center border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20">
                 <div class="flex items-center">
                     <button id="hamburger-btn" class="lg:hidden mr-4 text-slate-600 dark:text-slate-300">
@@ -85,8 +76,7 @@
             </header>
 
             <!-- =====> CORREÇÃO 2: O container agora preenche a largura e tem padding interno <===== -->
-            <div class="flex-1 overflow-y-auto p-4 md:p-8">
-                <!-- Página Dashboard -->
+            <div class="overflow-y-auto p-4 md:p-8">
                 <div id="page-dashboard" class="page-content">
                     <section id="dashboard-summary" class="mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow"><h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Total de Entradas</h3><p id="total-entradas" class="mt-1 text-3xl font-semibold text-green-600">R$ 0,00</p></div>

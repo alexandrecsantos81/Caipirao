@@ -172,3 +172,19 @@
 /* ================================================================
    ===> FIM: CSS PARA MENU HAMBÚRGUER E SIDEBAR <===
    ================================================================ */
+
+   /* ================================================== */
+/* ===== CORREÇÃO DEFINITIVA PARA LAYOUT DE TELA CHEIA ===== */
+/* ================================================== */
+
+/* Garante que o container principal do conteúdo ocupe todo o espaço flexível restante */
+#main-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%; /* Equivalente à classe 'flex-1' do Tailwind */
+}
+
+/* Garante que a área de scroll também se estique para preencher o espaço */
+#main-content > .overflow-y-auto {
+    flex: 1 1 0%;
+}
