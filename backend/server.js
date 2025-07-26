@@ -30,7 +30,10 @@ const PORT = process.env.PORT || 3000;
 const allowedOrigins = [
     'https://caipiraosys.netlify.app', // O seu frontend em produção
     'http://localhost:5500',          // Ambiente de desenvolvimento local (Live Server )
-    'http://127.0.0.1:5500'           // Variação do localhost
+    'http://127.0.0.1:5500',
+    'http://localhost:8080',
+    'http://127.0.0.1:8080'
+               // Variação do localhost
 ];
 
 const corsOptions = {
