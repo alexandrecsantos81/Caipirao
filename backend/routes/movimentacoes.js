@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db'); // Importa a nossa conexão com o PostgreSQL
+const { checkAdmin } = require('../middleware/authMiddleware');
 
 // GET /api/movimentacoes - Listar todas as movimentações
 router.get('/', async (req, res) => {
@@ -137,30 +138,19 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/movimentacoes/:id - Apagar uma movimentação
-router.delete('/:id', async (req, res) => {
-// DENTRO DE: router.delete('/:id', async (req, res) => { ... });
-
-try {
-    const { id } = req.params;
-    const resultadoDelete = await pool.query(
-        "DELETE FROM movimentacoes WHERE id = $1 RETURNING *",
-        [id]
-    );
-
-    if (resultadoDelete.rowCount === 0) {
-        return res.status(404).json({ error: "Movimentação não encontrada." });
+router.delete('/:id', checkAdmin, async (req, res) => {
+    // Apenas utilizadores com perfil 'ADMIN' chegarão a este ponto.
+    try {
+        const { id } = req.params;
+        const deleteQuery = await pool.query('DELETE FROM movimentacoes WHERE id = $1 RETURNING *', [id]);
+        if (deleteQuery.rowCount === 0) {
+            return res.status(404).json({ error: 'Movimentação não encontrada.' });
+        }
+        res.json({ message: 'Movimentação apagada com sucesso.', data: deleteQuery.rows[0] });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Erro no servidor' });
     }
-
-    res.json({
-        message: "Movimentação apagada com sucesso.",
-        movimentacao: resultadoDelete.rows[0]
-    });
-
-} catch (err) {
-    console.error('Erro ao apagar movimentação:', err.message);
-    res.status(500).json({ error: "Erro no servidor ao apagar movimentação." });
-}
-
 });
 
 module.exports = router; // Exporta o router para ser usado no server.js

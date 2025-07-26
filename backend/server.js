@@ -7,11 +7,10 @@
 // =================================================================
 
 // --- 1. Importação de Módulos Essenciais ---
-require('dotenv').config(); // Carrega as variáveis de ambiente do ficheiro .env
+const { verifyToken } = require('./middleware/authMiddleware'); // Apenas verifyToken é usado globalmente aqui
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const pool = require('./db'); // Importa a configuração de conexão com o banco de dados
 
 // --- 2. Importação dos Módulos de Rota (Endpoints da API) ---
@@ -129,39 +128,6 @@ app.post('/auth/login', async (req, res) => {
         res.status(500).json({ error: "Erro no servidor durante o login." });
     }
 });
-
-
-
-// --- 6. Middleware de Verificação de Token JWT ---
-// Este middleware será aplicado às rotas de dados para protegê-las.
-function verifyToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Extrai o token do cabeçalho "Bearer TOKEN"
-
-    if (token == null) {
-        return res.status(401).json({ error: "Acesso negado. Nenhum token fornecido." });
-    }
-
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) {
-            return res.status(403).json({ error: "Token inválido ou expirado." });
-        }
-        req.user = user; // Adiciona os dados do utilizador (payload) à requisição
-        next(); // O token é válido, a requisição pode prosseguir para a rota final.
-    });
-}
-
-
-// Middleware de Autorização para verificar se o perfil é ADMIN
-function checkAdmin(req, res, next) {
-    // O middleware 'verifyToken' já deve ter sido executado e colocado o 'user' no 'req'
-    if (req.user && req.user.perfil === 'ADMIN') {
-        next(); // O utilizador é ADMIN, pode prosseguir
-    } else {
-        // Se não for ADMIN, retorna erro de "Acesso Proibido"
-        res.status(403).json({ error: "Acesso negado. Requer perfil de Administrador." });
-    }
-}
 
 
 // --- 7. Definição das Rotas de Dados da API (Protegidas) ---
