@@ -71,7 +71,11 @@ document.addEventListener('DOMContentLoaded', () => {
             targetLink.classList.add('active');
         }
         
-        reloadDataForEntity(pageId);
+        if (pageId === 'dashboard' && allMovimentacoes.length > 0) {
+            updateDashboard(allMovimentacoes);
+        } else {
+
+            reloadDataForEntity(pageId);
     }
 
     // --- FUNÇÕES DE BUSCA DE DADOS (FETCH) ---
@@ -100,22 +104,29 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (!response.ok) throw new Error(`Erro HTTP! Status: ${response.status}`);
             const data = await response.json();
+            
             const formattedData = formatData(data);
 
             if (entity === 'movimentacoes') {
                 allMovimentacoes = formattedData;
                 if (document.getElementById('page-dashboard').classList.contains('active')) {
-                    updateDashboard(formattedData);
+                    updateDashboard(allMovimentacoes);
                 }
             } else if (entity === 'clientes') {
                 allClientes = formattedData;
             } else if (entity === 'produtos') {
                 allProdutos = formattedData;
             }
+            
+            if (entity !== 'dashboard') {
             createTable(container, formattedData, entity, sheetId);
+            }
+
         } catch (error) {
             console.error(`Erro ao buscar ${entity}:`, error);
-            container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}.</p>`;
+            if (container) {
+                container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}.</p>`;
+            }
             showNotification(`Falha ao carregar dados de ${entity}`, 'error');
         } finally {
             hideLoader();
