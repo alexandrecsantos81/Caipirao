@@ -108,3 +108,38 @@
     ================================================================
     */
 }
+
+
+/* ================================================================
+   ===> INÍCIO: CORREÇÃO DE LAYOUT RESPONSIVO GERAL <===
+   ================================================================ */
+
+@media (max-width: 768px) {
+    /* 
+     * Faz com que o container principal (que segura o menu e o conteúdo) 
+     * mude de 'flex-row' (lado a lado) para 'flex-col' (um em cima do outro).
+     */
+    body > .flex {
+        flex-direction: column;
+    }
+
+    /* 
+     * Ajusta a sidebar para não ter uma largura fixa e se adaptar.
+     * Remove a altura de ecrã inteiro para permitir a rolagem da página.
+     */
+    aside#sidebar {
+        width: 100%;
+        height: auto;
+        position: relative; /* Garante que não fique flutuando */
+    }
+
+    /* 
+     * Faz com que a área de conteúdo principal ocupe toda a largura
+     * e tenha uma margem no topo para não colar no menu.
+     */
+    main#main-content {
+        width: 100%;
+        margin-left: 0; /* Remove a margem esquerda que empurrava o conteúdo */
+        padding-top: 1rem; /* Adiciona um respiro no topo */
+    }
+}
