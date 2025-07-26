@@ -11,7 +11,7 @@ require('dotenv').config(); // Carrega as variáveis de ambiente do ficheiro .en
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
-const jwt = 'jsonwebtoken';
+const jwt = require('jsonwebtoken');
 const pool = require('./db'); // Importa a configuração de conexão com o banco de dados
 
 // --- 2. Importação dos Módulos de Rota (Endpoints da API) ---

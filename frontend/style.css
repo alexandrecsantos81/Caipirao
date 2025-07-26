@@ -1,3 +1,49 @@
+/* ================================================================
+   ESTILOS GLOBAIS E IMPORTAÇÕES DO TAILWIND
+   ================================================================ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ================================================================
+   ESTILOS DE COMPONENTES PERSONALIZADOS (Camadas)
+   ================================================================ */
+@layer components {
+    /* Estilo unificado para todos os campos de formulário */
+    .form-input {
+        @apply mt-1 block w-full rounded-md shadow-sm sm:text-sm;
+        @apply bg-slate-50 border-slate-300 text-slate-900; /* Cores para o modo claro */
+        @apply focus:border-blue-500 focus:ring-blue-500;
+        
+        /* Estilos para o modo escuro com MAIOR CONTRASTE */
+        @apply dark:bg-slate-900 dark:border-slate-600 dark:text-slate-50 dark:placeholder-slate-400;
+        @apply dark:focus:border-blue-500 dark:focus:ring-blue-500;
+    }
+
+    /* Estilo para os cabeçalhos das tabelas */
+    th {
+        @apply p-3 font-semibold text-left text-xs uppercase tracking-wider;
+        @apply text-slate-600 dark:text-slate-300;
+    }
+
+    /* Estilo para as células das tabelas */
+    td {
+        @apply p-3 whitespace-nowrap;
+        @apply text-slate-800 dark:text-slate-200;
+    }
+
+    /* Estilo para as linhas da tabela */
+    tbody tr {
+        @apply border-b border-slate-200 dark:border-slate-700;
+    }
+    tbody tr:hover {
+        @apply bg-slate-50 dark:bg-slate-700/50;
+    }
+}
+
+/* ================================================================
+   ANIMAÇÕES E UTILITÁRIOS
+   ================================================================ */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateX(100%); }
   to { opacity: 1; transform: translateX(0); }
@@ -16,48 +62,113 @@
   animation: fadeOut 0.5s forwards;
 }
 
-/* Adiciona esta classe para forçar o texto em maiúsculas nos inputs */
-.uppercase-input {
-    text-transform: uppercase;
+/* ================================================================
+   ===> INÍCIO: CÓDIGO REFINADO PARA TABELAS RESPONSIVAS <===
+   ================================================================ */
+
+/* Aplica-se a ecrãs com largura máxima de 768px (tablets e telemóveis) */
+@media (max-width: 768px) {
+    
+    /* Garante que o container da tabela não crie uma barra de rolagem horizontal */
+    .responsive-table-container {
+        overflow-x: hidden;
+    }
+
+    /* Esconde o cabeçalho da tabela tradicional (th) */
+    .responsive-table-container thead {
+        display: none;
+    }
+
+    /* Transforma os elementos da tabela para se comportarem como blocos empilhados */
+    .responsive-table-container table, 
+    .responsive-table-container tbody, 
+    .responsive-table-container tr, 
+    .responsive-table-container td {
+        display: block;
+        width: 100%;
+    }
+
+    /* Estiliza cada linha (<tr>) como um "card" individual */
+    .responsive-table-container tr {
+        margin-bottom: 1.5rem; /* Espaço entre os cards */
+        border: 1px solid;
+        border-color: #e2e8f0; /* Cor da borda para modo claro */
+        border-radius: 0.5rem;
+        padding: 1rem;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    }
+    .dark .responsive-table-container tr {
+        border-color: #334155; /* Cor da borda para modo escuro */
+        background-color: #1e293b; /* Fundo do card no modo escuro */
+    }
+
+    /* Remove a borda das células e ajusta o layout interno do card */
+    .responsive-table-container td {
+        padding: 0.75rem 0.25rem;
+        text-align: right; /* Alinha o valor (conteúdo da célula) à direita */
+        border: none;
+        border-bottom: 1px dashed #cbd5e1; /* Linha separadora entre os campos do card */
+        white-space: normal; /* Permite que o texto quebre a linha */
+    }
+    .dark .responsive-table-container td {
+        border-bottom-color: #475569;
+    }
+
+    /* Remove a linha separadora do último campo do card */
+    .responsive-table-container td:last-child {
+        border-bottom: none;
+    }
+
+    /* Cria o "label" (título do campo) a partir do atributo data-label */
+    .responsive-table-container td[data-label]::before {
+        content: attr(data-label);
+        float: left; /* Alinha o label à esquerda */
+        font-weight: 600; /* Deixa o label em negrito */
+        text-transform: uppercase;
+        margin-right: 0.5rem;
+        color: #475569; /* Cor do label no modo claro */
+    }
+    .dark .responsive-table-container td[data-label]::before {
+        color: #94a3b8; /* Cor do label no modo escuro */
+    }
+}
+/* ================================================================
+   ===> FIM: CÓDIGO REFINADO PARA TABELAS RESPONSIVAS <===
+   ================================================================ */
+
+
+/* ================================================================
+   ===> INÍCIO: CSS PARA MENU HAMBÚRGUER E SIDEBAR <===
+   ================================================================ */
+
+/* 
+  A classe 'active' será adicionada/removida via JavaScript 
+  para mostrar o menu em ecrãs pequenos.
+*/
+#sidebar.active {
+    transform: translateX(0);
 }
 
-/* ESTILOS GLOBAIS PARA INPUTS, SELECTS E TABELAS */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer components {
-    /* Estilo unificado para todos os campos de formulário */
-    .form-input {
-        @apply mt-1 block w-full rounded-md shadow-sm sm:text-sm uppercase-input;
-        @apply bg-slate-50 border-slate-300 text-slate-900; /* Cores para o modo claro */
-        @apply focus:border-blue-500 focus:ring-blue-500;
-        
-        /* --- CORREÇÃO APLICADA AQUI --- */
-        /* Estilos para o modo escuro com MAIOR CONTRASTE */
-        @apply dark:bg-slate-900 dark:border-slate-600 dark:text-slate-50 dark:placeholder-slate-400;
-        @apply dark:focus:border-blue-500 dark:focus:ring-blue-500;
-    }
-
-    /* Estilo para os cabeçalhos das tabelas */
-    th {
-        /* --- CORREÇÃO APLICADA AQUI --- */
-        @apply p-3 font-semibold text-left text-xs uppercase tracking-wider;
-        @apply text-slate-600 dark:text-slate-300; /* Cor mais clara para o modo escuro */
-    }
-
-    /* Estilo para as células das tabelas */
-    td {
-        @apply p-3 whitespace-nowrap;
-        /* --- MELHORIA ADICIONADA AQUI --- */
-        @apply text-slate-800 dark:text-slate-200; /* Garante bom contraste nas células */
-    }
-
-    /* Estilo para as linhas da tabela */
-    tbody tr {
-        @apply border-b border-slate-200 dark:border-slate-700;
-    }
-    tbody tr:hover {
-        @apply bg-slate-50 dark:bg-slate-700/50;
+/* 
+  Em ecrãs pequenos (abaixo de 1024px), o conteúdo principal
+  ocupa a largura toda, pois o menu está escondido ou flutuando por cima.
+*/
+@media (max-width: 1023px) {
+    #main-content {
+        width: 100%;
     }
 }
+
+/* 
+  Em ecrãs grandes (1024px ou mais), o menu lateral (sidebar)
+  empurra o conteúdo principal para a direita.
+*/
+@media (min-width: 1024px) {
+    #main-content {
+        /* A margem é igual à largura da sidebar (w-64 = 16rem) */
+        margin-left: 16rem; 
+    }
+}
+/* ================================================================
+   ===> FIM: CSS PARA MENU HAMBÚRGUER E SIDEBAR <===
+   ================================================================ */
