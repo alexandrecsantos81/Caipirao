@@ -142,14 +142,6 @@
    ================================================================ */
 
 /* 
-  A classe 'active' será adicionada/removida via JavaScript 
-  para mostrar o menu em ecrãs pequenos.
-*/
-#sidebar.active {
-    transform: translateX(0);
-}
-
-/* 
   Em ecrãs pequenos (abaixo de 1024px), o conteúdo principal
   ocupa a largura toda, pois o menu está escondido ou flutuando por cima.
 */
@@ -159,32 +151,3 @@
     }
 }
 
-/* 
-  Em ecrãs grandes (1024px ou mais), o menu lateral (sidebar)
-  empurra o conteúdo principal para a direita.
-*/
-@media (min-width: 1024px) {
-    #main-content {
-        /* A margem é igual à largura da sidebar (w-64 = 16rem) */
-        margin-left: 16rem; 
-    }
-}
-/* ================================================================
-   ===> FIM: CSS PARA MENU HAMBÚRGUER E SIDEBAR <===
-   ================================================================ */
-
-   /* ================================================== */
-/* ===== CORREÇÃO DEFINITIVA PARA LAYOUT DE TELA CHEIA ===== */
-/* ================================================== */
-
-/* Garante que o container principal do conteúdo ocupe todo o espaço flexível restante */
-#main-content {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 0%; /* Equivalente à classe 'flex-1' do Tailwind */
-}
-
-/* Garante que a área de scroll também se estique para preencher o espaço */
-#main-content > .overflow-y-auto {
-    flex: 1 1 0%;
-}
