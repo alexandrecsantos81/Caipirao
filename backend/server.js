@@ -99,20 +99,24 @@ app.post('/auth/login', async (req, res) => {
         const utilizador = result.rows[0];
 
         if (!utilizador) {
-            return res.status(401).json({ error: "Credenciais inválidas." }); // Utilizador não encontrado
+            return res.status(401).json({ error: "Credenciais inválidas." });
         }
 
         // Compara a senha fornecida com o hash guardado no banco
         const senhaCorreta = await bcrypt.compare(senha, utilizador.senha_hash);
         if (!senhaCorreta) {
-            return res.status(401).json({ error: "Credenciais inválidas." }); // Senha incorreta
+            return res.status(401).json({ error: "Credenciais inválidas." });
         }
 
         // Se as credenciais estiverem corretas, gera um token JWT
         const token = jwt.sign(
-            { email: utilizador.email, id: utilizador.id }, // Payload do token
-            process.env.JWT_SECRET,                         // Chave secreta
-            { expiresIn: '8h' }                             // Duração do token
+            { 
+                email: utilizador.email, 
+                id: utilizador.id,
+                perfil: utilizador.perfil // <--- ALTERAÇÃO APLICADA AQUI
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: '8h' }
         );
 
         res.json({ token });
@@ -122,6 +126,7 @@ app.post('/auth/login', async (req, res) => {
         res.status(500).json({ error: "Erro no servidor durante o login." });
     }
 });
+
 
 
 // --- 6. Middleware de Verificação de Token JWT ---
