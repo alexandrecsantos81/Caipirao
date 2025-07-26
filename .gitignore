@@ -1,3 +1,5 @@
-# Ignorar ficheiros de credenciais e de ambiente
-backend/data/credenciais.json
-.envchave OAuth.txt
+# Ignorar ficheiros de credenciais e segredos
+chave OAuth.txt
+*.json
+*.txt
+.env
