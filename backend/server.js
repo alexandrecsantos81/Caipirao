@@ -1,409 +1,156 @@
-require('dotenv').config();
+// =================================================================
+//          FICHEIRO: backend/server.js (VERSÃO PÓS-MIGRAÇÃO)
+// =================================================================
+// DESCRIÇÃO: Servidor principal da API do Projeto Caipirão.
+//            Utiliza Express, CORS e JWT para fornecer endpoints
+//            seguros que interagem com um banco de dados PostgreSQL.
+// =================================================================
+
+// --- 1. Importação de Módulos Essenciais ---
+require('dotenv').config(); // Carrega as variáveis de ambiente do ficheiro .env
 const express = require('express');
 const cors = require('cors');
-const { google } = require('googleapis');
-const path = require('path');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const pool = require('./db'); // Importa a configuração de conexão com o banco de dados
 
+// --- 2. Importação dos Módulos de Rota (Endpoints da API) ---
+const clientesRouter = require('./routes/clientes');
+const produtosRouter = require('./routes/produtos');
+const movimentacoesRouter = require('./routes/movimentacoes');
+
+// --- 3. Inicialização e Configuração do Express ---
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// --- Middlewares Essenciais ---
+// --- 4. Configuração de Middlewares ---
 
-// Lista de origens permitidas
+// a) Configuração do CORS (Cross-Origin Resource Sharing)
+// Define quais origens (websites) podem fazer requisições para esta API.
 const allowedOrigins = [
-    'https://caipiraosys.netlify.app',
-    'http://localhost:5500', // Para testes com o Live Server
-    'http://127.0.0.1:5500'  // Outra variação do localhost
+    'https://caipiraosys.netlify.app', // O seu frontend em produção
+    'http://localhost:5500',          // Ambiente de desenvolvimento local (Live Server )
+    'http://127.0.0.1:5500'           // Variação do localhost
 ];
 
-// Configuração do CORS
 const corsOptions = {
     origin: function (origin, callback ) {
-        // Permite requisições sem 'origin' (como Postman, apps mobile, etc.)
-        // ou se a origem estiver na lista de permitidas.
+        // Permite requisições sem 'origin' (ex: Postman) ou se a origem estiver na lista.
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
-            callback(new Error('Não permitido pela política de CORS'));
+            callback(new Error('Acesso não permitido pela política de CORS'));
         }
     },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Garante que todos os métodos HTTP são permitidos
-    credentials: true // Se você precisar lidar com cookies ou headers de autorização
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Métodos HTTP permitidos
 };
 
-app.use(cors(corsOptions));
+app.use(cors(corsOptions)); // Aplica as configurações de CORS a todas as requisições.
+
+// b) Middleware para processar JSON
+// Habilita a API a entender e processar corpos de requisição no formato JSON.
 app.use(express.json());
 
-// --- Configuração da Autenticação Google ---
-const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
-console.log('--- DIAGNÓSTICO: SPREADSHEET_ID a ser usado:', SPREADSHEET_ID, '---');
+// --- 5. Definição das Rotas de Autenticação ---
 
-// --- NOVA CONFIGURAÇÃO DE AUTENTICAÇÃO OAUTH 2.0 ---
-const { OAuth2 } = google.auth;
-const oauth2Client = new OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    "https://developers.google.com/oauthplayground" // Redirect URL
- );
-
-oauth2Client.setCredentials({
-    refresh_token: process.env.GOOGLE_REFRESH_TOKEN
-});
-
-// O 'auth' a ser usado nas chamadas da API agora é o oauth2Client
-const auth = oauth2Client;
-// --- FIM DA NOVA CONFIGURAÇÃO ---
-
-// --- ROTAS DA API (Dados) ---
-
-// Rota para buscar dados de uma aba
-app.get('/api/:sheetName', verifyToken, async (req, res) => {
-    let { sheetName } = req.params;
-    const originalSheetName = sheetName;
-    const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
-    const actualSheetName = allowedSheets[sheetName.toLowerCase()];
-
-    if (!actualSheetName) {
-        return res.status(400).send('Nome da planilha inválido.');
+// Rota para REGISTAR um novo utilizador
+app.post('/auth/register', async (req, res) => {
+    const { email, senha } = req.body;
+    if (!email || !senha) {
+        return res.status(400).json({ error: "Email e senha são obrigatórios." });
     }
 
     try {
-        const sheets = google.sheets({ version: 'v4', auth });
-        const response = await sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID,
-            range: actualSheetName,
+        // Gera o hash da senha com um "sal" de 10 rounds
+        const salt = await bcrypt.genSalt(10);
+        const senhaHash = await bcrypt.hash(senha, salt);
+
+        // Insere o novo utilizador no banco de dados
+        const novoUtilizador = await pool.query(
+            "INSERT INTO utilizadores (email, senha_hash) VALUES ($1, $2) RETURNING id, email",
+            [email, senhaHash]
+        );
+
+        res.status(201).json({
+            message: "Utilizador registado com sucesso!",
+            user: novoUtilizador.rows[0]
         });
-        res.json(response.data.values);
-    } catch (error) {
-        console.error(`Erro ao buscar dados da aba ${originalSheetName}:`, error.message);
-        res.status(500).send(`Erro ao buscar dados da aba ${originalSheetName}.`);
+
+    } catch (err) {
+        // Trata o erro de email duplicado
+        if (err.code === '23505') {
+            return res.status(409).json({ error: "Este email já está registado." });
+        }
+        console.error('Erro ao registar utilizador:', err.message);
+        res.status(500).json({ error: "Erro no servidor ao registar utilizador." });
     }
 });
 
-// VERSÃO DE DEPURAÇÃO DA ROTA DE ADIÇÃO (POST)
-app.post('/api/:sheetName', verifyToken, async (req, res) => {
-    const { sheetName } = req.params;
-    const data = req.body;
-    const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
-    const actualSheetName = allowedSheets[sheetName.toLowerCase()];
-
-    // --- LOG DE DEPURAÇÃO 1: DADOS RECEBIDOS ---
-    console.log(`--- TENTATIVA DE ADIÇÃO NA ABA: ${actualSheetName} ---`);
-    console.log('Dados recebidos do frontend (req.body):', data);
-
-    if (!actualSheetName) {
-        return res.status(400).send('Nome da planilha inválido.');
+// Rota para fazer LOGIN de um utilizador
+app.post('/auth/login', async (req, res) => {
+    const { email, senha } = req.body;
+    if (!email || !senha) {
+        return res.status(400).json({ error: "Email e senha são obrigatórios." });
     }
 
     try {
-        const sheets = google.sheets({ version: 'v4', auth });
-        let newRow = [];
+        // Procura o utilizador pelo email no banco de dados
+        const result = await pool.query("SELECT * FROM utilizadores WHERE email = $1", [email]);
+        const utilizador = result.rows[0];
 
-        const generatedId = Date.now().toString().slice(-6) + Math.floor(Math.random() * 100);
-        
-        // --- LOG DE DEPURAÇÃO 2: ID GERADO ---
-        console.log('ID gerado automaticamente:', generatedId);
-
-        // Lógica explícita que estava causando o problema
-        if (actualSheetName === 'Clientes') {
-            newRow = [ generatedId, data.Nome || '', data.Contato || '', data.Endereço || '' ];
-        } else if (actualSheetName === 'Produtos') {
-            newRow = [ generatedId, data.Nome || '', data.Descrição || '', data.Preço ? parseFloat(String(data.Preço).replace(',', '.')) : '' ];
-        } else if (actualSheetName === '_Movimentacoes') {
-            newRow = [ generatedId, data.Data || '', data['Tipo (Entrada/Saída)'] || '', data.Categoria || '', data.Descrição || '', data.Valor ? parseFloat(String(data.Valor).replace(',', '.')) : '', data.Responsável || '', data.Observações || '' ];
-        } else {
-            return res.status(400).send('Tipo de entidade não suportado para adição.');
+        if (!utilizador) {
+            return res.status(401).json({ error: "Credenciais inválidas." }); // Utilizador não encontrado
         }
 
-        // --- LOG DE DEPURAÇÃO 3: LINHA A SER INSERIDA ---
-        console.log('Linha montada para ser inserida na planilha:', newRow);
+        // Compara a senha fornecida com o hash guardado no banco
+        const senhaCorreta = await bcrypt.compare(senha, utilizador.senha_hash);
+        if (!senhaCorreta) {
+            return res.status(401).json({ error: "Credenciais inválidas." }); // Senha incorreta
+        }
 
-        await sheets.spreadsheets.values.append({
-            spreadsheetId: SPREADSHEET_ID,
-            range: actualSheetName,
-            valueInputOption: 'USER_ENTERED',
-            resource: { values: [newRow] },
-        });
+        // Se as credenciais estiverem corretas, gera um token JWT
+        const token = jwt.sign(
+            { email: utilizador.email, id: utilizador.id }, // Payload do token
+            process.env.JWT_SECRET,                         // Chave secreta
+            { expiresIn: '8h' }                             // Duração do token
+        );
 
-        console.log('SUCESSO: Dados adicionados na API do Google.');
-        res.status(201).send('Dados adicionados com sucesso!');
+        res.json({ token });
 
-    } catch (error) {
-        // --- LOG DE DEPURAÇÃO 4: ERRO DA API ---
-        console.error('!!! ERRO AO TENTAR ADICIONAR DADOS !!!');
-        console.error(error.message);
-        res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
+    } catch (err) {
+        console.error('Erro no login:', err.message);
+        res.status(500).json({ error: "Erro no servidor durante o login." });
     }
 });
 
 
-
-// Rota para apagar uma linha (VERSÃO FINALÍSSIMA CORRIGIDA)
-app.delete('/api/:sheetName', verifyToken, async (req, res) => {
-    const { sheetName } = req.params;
-    const { id, sheetId } = req.query;
-
-    if (!['movimentacoes', 'clientes', 'produtos'].includes(sheetName.toLowerCase())) { return res.status(400).send('Nome da planilha inválido.'); }
-    if (!id) { return res.status(400).send('O ID do registo é obrigatório para a exclusão.'); }
-    if (!sheetId) { return res.status(400).send('O ID da aba (sheetId) é obrigatório.'); }
-
-    try {
-        const sheets = google.sheets({ version: 'v4', auth });
-        const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
-        const actualSheetName = allowedSheets[sheetName.toLowerCase()];
-
-        const getRows = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: actualSheetName });
-        const allData = getRows.data.values || [];
-        const headers = allData[0];
-        
-        // LÓGICA CORRIGIDA PARA ENCONTRAR A COLUNA DE ID
-        const idColumnName = actualSheetName === '_Movimentacoes' ? 'ID Mov.' : 'ID';
-        const idColumnIndex = headers.findIndex(header => header === idColumnName);
-
-        if (idColumnIndex === -1) { return res.status(500).send(`A coluna "${idColumnName}" não foi encontrada na planilha.`); }
-
-        let targetRowIndex = -1;
-        for (let i = 1; i < allData.length; i++) {
-            if (allData[i][idColumnIndex] === id) {
-                targetRowIndex = i;
-                break;
-            }
-        }
-
-        if (targetRowIndex === -1) { return res.status(404).send(`Registo com ID "${id}" não encontrado.`); }
-
-        await sheets.spreadsheets.batchUpdate({
-            spreadsheetId: SPREADSHEET_ID,
-            resource: {
-                requests: [{
-                    deleteDimension: {
-                        range: {
-                            sheetId: parseInt(sheetId, 10),
-                            dimension: 'ROWS',
-                            startIndex: targetRowIndex,
-                            endIndex: targetRowIndex + 1
-                        }
-                    }
-                }]
-            }
-        });
-
-        console.log(`SUCESSO: Linha física ${targetRowIndex} deletada na API do Google.`);
-        res.status(200).send(`Registo com ID ${id} deletado com sucesso.`);
-
-    } catch (error) {
-        console.error('!!! ERRO DA API DO GOOGLE AO TENTAR DELETAR A LINHA FÍSICA !!!');
-        console.error(error.message);
-        res.status(500).send(`Erro no servidor ao deletar a linha: ${error.message}`);
-    }
-});
-
-
-    // VERSÃO COM COMPARAÇÃO INSENSÍVEL A MAIÚSCULAS/MINÚSCULAS
-    app.put('/api/:sheetName', verifyToken, async (req, res) => {
-        const { sheetName } = req.params;
-        const updatedData = req.body;
-        const { id } = updatedData;
-
-        if (!id) {
-            return res.status(400).send('Erro: O ID do registo é obrigatório para a edição.');
-        }
-        const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
-        const actualSheetName = allowedSheets[sheetName.toLowerCase()];
-        if (!actualSheetName) {
-            return res.status(400).send('Nome da planilha inválido.');
-        }
-
-        try {
-            const sheets = google.sheets({ version: 'v4', auth });
-
-            const getResponse = await sheets.spreadsheets.values.get({
-                spreadsheetId: SPREADSHEET_ID,
-                range: actualSheetName,
-            });
-            const allRows = getResponse.data.values || [];
-            const headers = allRows[0];
-            
-            const idKey = sheetName === 'movimentacoes' ? 'ID Mov.' : 'ID';
-            
-            const idColumnIndex = headers.findIndex(header => header.toLowerCase() === idKey.toLowerCase());
-            
-            let targetRowIndex = -1;
-            for (let i = 1; i < allRows.length; i++) {
-                if (allRows[i][idColumnIndex] == id) {
-                    targetRowIndex = i;
-                    break;
-                }
-            }
-
-            if (targetRowIndex === -1) {
-                return res.status(404).send('Registo não encontrado na planilha.');
-            }
-
-            const updatedRowValues = headers.map(header => {
-                if (header.toLowerCase() === idKey.toLowerCase()) {
-                    return id;
-                }
-                if ((header.toLowerCase() === 'preço' || header.toLowerCase() === 'valor') && updatedData[header]) {
-                    const numericValue = parseFloat(String(updatedData[header]).replace(',', '.'));
-                    return isNaN(numericValue) ? '' : numericValue;
-                }
-                // Procura a chave correspondente em updatedData ignorando maiúsculas/minúsculas
-                const dataKey = Object.keys(updatedData).find(k => k.toLowerCase() === header.toLowerCase());
-                return dataKey ? updatedData[dataKey] : '';
-            });
-
-            const rangeToUpdate = `${actualSheetName}!A${targetRowIndex + 1}`;
-            
-            await sheets.spreadsheets.values.update({
-                spreadsheetId: SPREADSHEET_ID,
-                range: rangeToUpdate,
-                valueInputOption: 'USER_ENTERED',
-                resource: {
-                    values: [updatedRowValues]
-                }
-            });
-
-            res.status(200).send('Registo atualizado com sucesso!');
-
-        } catch (error) {
-            console.error(`Erro ao atualizar registo:`, error.message);
-            res.status(500).send(`Erro no servidor ao atualizar: ${error.message}`);
-        }
-    });
-
-// --- ROTAS DE AUTENTICAÇÃO ---
-
-// --- MIDDLEWARE DE VERIFICAÇÃO DE TOKEN ---
+// --- 6. Middleware de Verificação de Token JWT ---
+// Este middleware será aplicado às rotas de dados para protegê-las.
 function verifyToken(req, res, next) {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Formato: "Bearer TOKEN"
+    const token = authHeader && authHeader.split(' ')[1]; // Extrai o token do cabeçalho "Bearer TOKEN"
 
     if (token == null) {
-        return res.sendStatus(401); // Unauthorized - Nenhum token fornecido
+        return res.status(401).json({ error: "Acesso negado. Nenhum token fornecido." });
     }
 
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
         if (err) {
-            return res.sendStatus(403); // Forbidden - Token inválido ou expirado
+            return res.status(403).json({ error: "Token inválido ou expirado." });
         }
-        req.user = user;
-        next(); // O token é válido, pode prosseguir para a rota
+        req.user = user; // Adiciona os dados do utilizador (payload) à requisição
+        next(); // O token é válido, a requisição pode prosseguir para a rota final.
     });
 }
 
-// VERSÃO FINAL, ESTÁVEL E EXPLÍCITA DA ROTA DE ADIÇÃO (POST)
-app.post('/api/:sheetName', verifyToken, async (req, res) => {
-    const { sheetName } = req.params;
-    const data = req.body;
-    const allowedSheets = { movimentacoes: '_Movimentacoes', clientes: 'Clientes', produtos: 'Produtos' };
-    const actualSheetName = allowedSheets[sheetName.toLowerCase()];
-
-    if (!actualSheetName) {
-        return res.status(400).send('Nome da planilha inválido.');
-    }
-
-    try {
-        const sheets = google.sheets({ version: 'v4', auth });
-        let newRow = [];
-
-        // Lógica explícita e segura, baseada na que já funciona para edição.
-        // Garante que a ordem das colunas na planilha seja respeitada.
-        if (actualSheetName === 'Clientes') {
-            // Ordem da planilha: ID, Nome, Contato, Endereço
-            newRow = [
-                data.ID || '',
-                data.Nome || '',
-                data.Contato || '',
-                data.Endereço || ''
-            ];
-        } else if (actualSheetName === 'Produtos') {
-            // Ordem da planilha: ID, Nome, Descrição, Preço
-            newRow = [
-                data.ID || '',
-                data.Nome || '',
-                data.Descrição || '',
-                data.Preço ? parseFloat(String(data.Preço).replace(',', '.')) : ''
-            ];
-        } else if (actualSheetName === '_Movimentacoes') {
-            // Ordem da planilha: ID Mov., Data, Tipo, Categoria, etc.
-            newRow = [
-                data['ID Mov.'] || '',
-                data.Data || '',
-                data['Tipo (Entrada/Saída)'] || '',
-                data.Categoria || '',
-                data.Descrição || '',
-                data.Valor ? parseFloat(String(data.Valor).replace(',', '.')) : '',
-                data.Responsável || '',
-                data.Observações || ''
-            ];
-        } else {
-            // Esta condição nunca deve ser atingida se a validação inicial funcionar.
-            return res.status(400).send('Tipo de entidade não suportado para adição.');
-        }
-
-        await sheets.spreadsheets.values.append({
-            spreadsheetId: SPREADSHEET_ID,
-            range: actualSheetName,
-            valueInputOption: 'USER_ENTERED',
-            resource: { values: [newRow] },
-        });
-
-        res.status(201).send('Dados adicionados com sucesso!');
-
-    } catch (error) {
-        console.error(`Erro ao adicionar dados na aba ${actualSheetName}:`, error.message);
-        res.status(500).send(`Erro ao adicionar dados na aba ${actualSheetName}.`);
-    }
-});
+// --- 7. Definição das Rotas de Dados da API (Protegidas) ---
+// Todas as requisições para estes endpoints devem passar primeiro pelo `verifyToken`.
+app.use('/api/clientes', verifyToken, clientesRouter);
+app.use('/api/produtos', verifyToken, produtosRouter);
+app.use('/api/movimentacoes', verifyToken, movimentacoesRouter);
 
 
-
-// Rota para fazer login de um utilizador
-app.post('/auth/login', async (req, res) => {
-    const { email, senha } = req.body;
-
-    if (!email || !senha) {
-        return res.status(400).send('Email e senha são obrigatórios.');
-    }
-
-    try {
-        const sheets = google.sheets({ version: 'v4', auth });
-        const response = await sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID,
-            range: 'Utilizadores!A:B',
-        });
-
-        const utilizadores = response.data.values || [];
-        const utilizadorEncontrado = utilizadores.slice(1).find(row => row[0] === email);
-
-        if (!utilizadorEncontrado) {
-            return res.status(401).send('Credenciais inválidas.');
-        }
-
-        const senhaHash = utilizadorEncontrado[1];
-        const senhaCorreta = await bcrypt.compare(senha, senhaHash);
-
-        if (!senhaCorreta) {
-            return res.status(401).send('Credenciais inválidas.');
-        }
-
-        const token = jwt.sign(
-            { email: utilizadorEncontrado[0] },
-            process.env.JWT_SECRET,
-            { expiresIn: '8h' }
-        );
-
-        res.json({ token: token });
-    } catch (error) {
-        console.error('Erro no login:', error.message);
-        res.status(500).send('Erro no servidor durante o login.');
-    }
-});
-
-// --- INICIALIZAÇÃO DO SERVIDOR ---
+// --- 8. Inicialização do Servidor ---
 app.listen(PORT, () => {
-    console.log(`Servidor de produção a correr na porta ${PORT}`);
+    console.log(`✅ Servidor limpo e refatorado a correr na porta ${PORT}`);
 });
