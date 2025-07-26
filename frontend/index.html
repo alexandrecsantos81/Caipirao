@@ -60,8 +60,42 @@
 
     <!-- Página Dashboard -->
     <div id="page-dashboard" class="page-content">
-        <!-- ... conteúdo do dashboard (sem alterações) ... -->
+        
+        <!-- Secção dos Cards de Resumo -->
+        <section id="dashboard-summary" class="mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- Card de Entradas -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-sm font-medium text-slate-500">Total de Entradas</h3>
+                <p id="total-entradas" class="mt-1 text-3xl font-semibold text-green-600">R$ 0,00</p>
+            </div>
+
+            <!-- Card de Saídas -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-sm font-medium text-slate-500">Total de Saídas</h3>
+                <p id="total-saidas" class="mt-1 text-3xl font-semibold text-red-600">R$ 0,00</p>
+            </div>
+
+            <!-- Card de Saldo Atual -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-sm font-medium text-slate-500">Saldo Atual</h3>
+                <p id="saldo-atual" class="mt-1 text-3xl font-semibold text-blue-600">R$ 0,00</p>
+            </div>
+
+        </section>
+
+        <!-- Secção do Gráfico de Categorias -->
+        <section class="mb-8">
+            <h2 class="text-2xl font-semibold mb-4">Análise de Categorias</h2>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="chart-container" style="position: relative; height:40vh; width:80vw; max-width: 600px; margin: auto;">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </section>
+
     </div>
+
 
     <!-- Container para centralizar as outras páginas -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
