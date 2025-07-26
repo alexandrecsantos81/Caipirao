@@ -151,6 +151,19 @@ function verifyToken(req, res, next) {
     });
 }
 
+
+// Middleware de Autorização para verificar se o perfil é ADMIN
+function checkAdmin(req, res, next) {
+    // O middleware 'verifyToken' já deve ter sido executado e colocado o 'user' no 'req'
+    if (req.user && req.user.perfil === 'ADMIN') {
+        next(); // O utilizador é ADMIN, pode prosseguir
+    } else {
+        // Se não for ADMIN, retorna erro de "Acesso Proibido"
+        res.status(403).json({ error: "Acesso negado. Requer perfil de Administrador." });
+    }
+}
+
+
 // --- 7. Definição das Rotas de Dados da API (Protegidas) ---
 // Todas as requisições para estes endpoints devem passar primeiro pelo `verifyToken`.
 app.use('/api/clientes', verifyToken, clientesRouter);
