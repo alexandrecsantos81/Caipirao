@@ -34,33 +34,32 @@
         <!-- ================================================== -->
         <!-- ================ SIDEBAR (MENU ) ================== -->
         <!-- ================================================== -->
-        <aside id="sidebar" class="bg-white dark:bg-slate-800 w-64 flex-shrink-0 p-4 shadow-lg fixed h-screen lg:relative transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out z-40">
-            <div class="flex flex-col h-full">
-                <!-- Logo -->
-                <div class="mb-10 text-center">
-                    <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400">Caipirão</h1>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Gestão Financeira</p>
-                </div>
-
-                <!-- Navegação -->
-                <!-- =====> CORREÇÃO 1: Adicionada a classe 'flex-grow' para preencher o espaço vertical <===== -->
-                <nav class="flex-grow">
-                    <ul>
-                        <li><a href="#dashboard" class="nav-link flex items-center py-2.5 px-4 my-2 rounded-lg transition duration-200 hover:bg-blue-50 dark:hover:bg-slate-700">📊 Dashboard</a></li>
-                        <li><a href="#movimentacoes" class="nav-link flex items-center py-2.5 px-4 my-2 rounded-lg transition duration-200 hover:bg-blue-50 dark:hover:bg-slate-700">🔄 Movimentações</a></li>
-                        <li><a href="#clientes" class="nav-link flex items-center py-2.5 px-4 my-2 rounded-lg transition duration-200 hover:bg-blue-50 dark:hover:bg-slate-700">👥 Clientes</a></li>
-                        <li><a href="#produtos" class="nav-link flex items-center py-2.5 px-4 my-2 rounded-lg transition duration-200 hover:bg-blue-50 dark:hover:bg-slate-700">📦 Produtos</a></li>
-                    </ul>
-                </nav>
-
-                <!-- Botão de Logout -->
-                <div class="mt-auto">
-                    <button id="logout-btn" class="w-full flex items-center justify-center bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition duration-200">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                        Logout
-                    </button>
-                </div>
+        <aside id="sidebar" class="bg-white dark:bg-slate-800 w-64 flex-shrink-0 p-4 shadow-lg fixed h-screen lg:relative transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out z-40 flex flex-col">
+            
+            <!-- Logo -->
+            <div class="mb-10 text-center flex-shrink-0"> <!-- Adicionado flex-shrink-0 para garantir que não encolha -->
+                <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400">Caipirão</h1>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Gestão Financeira</p>
             </div>
+
+            <!-- Navegação -->
+            <nav class="flex-grow"> <!-- A classe flex-grow aqui agora vai funcionar corretamente -->
+                <ul>
+                    <li><a href="#dashboard" class="nav-link flex items-center py-2.5 px-4 my-2 rounded-lg transition duration-200 hover:bg-blue-50 dark:hover:bg-slate-700">📊 Dashboard</a></li>
+                    <li><a href="#movimentacoes" class="nav-link flex items-center py-2.5 px-4 my-2 rounded-lg transition duration-200 hover:bg-blue-50 dark:hover:bg-slate-700">🔄 Movimentações</a></li>
+                    <li><a href="#clientes" class="nav-link flex items-center py-2.5 px-4 my-2 rounded-lg transition duration-200 hover:bg-blue-50 dark:hover:bg-slate-700">👥 Clientes</a></li>
+                    <li><a href="#produtos" class="nav-link flex items-center py-2.5 px-4 my-2 rounded-lg transition duration-200 hover:bg-blue-50 dark:hover:bg-slate-700">📦 Produtos</a></li>
+                </ul>
+            </nav>
+
+            <!-- Botão de Logout -->
+            <div class="flex-shrink-0"> <!-- Adicionado flex-shrink-0 para garantir que não encolha -->
+                <button id="logout-btn" class="w-full flex items-center justify-center bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition duration-200">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Logout
+                </button>
+            </div>
+            
         </aside>
 
         <!-- Overlay para escurecer a tela quando o menu estiver aberto em mobile -->
