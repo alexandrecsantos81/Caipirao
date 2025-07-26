@@ -11,6 +11,7 @@ const { verifyToken } = require('./middleware/authMiddleware'); // Apenas verify
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const pool = require('./db'); // Importa a configuração de conexão com o banco de dados
 
 // --- 2. Importação dos Módulos de Rota (Endpoints da API) ---
