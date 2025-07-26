@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
-    // --- LÓGICA DE NAVEGAÇÃO (CORRIGIDA) ---
+    // --- LÓGICA DE NAVEGAÇÃO ---
     function showPage(pageId) {
         pageContents.forEach(page => page.classList.remove('active'));
         navLinks.forEach(link => link.classList.remove('active'));
@@ -64,26 +64,23 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (targetPage) {
             targetPage.classList.add('active');
-            pageTitle.textContent = targetLink.textContent.trim().replace(/^[^\w]+/, '');
+            pageTitle.textContent = targetLink.textContent.trim().replace(/^[^\w\s]+/, ''); // Remove emoji
         }
         if (targetLink) {
             targetLink.classList.add('active');
         }
         
-        // Lógica central para carregar dados ou atualizar a UI
         if (pageId === 'dashboard' && allMovimentacoes.length > 0) {
-            // Se já temos os dados, apenas atualiza o dashboard
             updateDashboard(allMovimentacoes);
         } else {
-            // Se não, busca os dados necessários para a página
             reloadDataForEntity(pageId);
         }
     }
 
-    // --- FUNÇÕES DE BUSCA DE DADOS (FETCH) (CORRIGIDA) ---
+    // --- FUNÇÕES DE BUSCA DE DADOS (FETCH) ---
     function reloadDataForEntity(entity) {
         const pageContainers = {
-            dashboard: null, // O dashboard não tem um container de tabela direto
+            dashboard: null,
             movimentacoes: document.getElementById('movimentacoes-container'),
             clientes: document.getElementById('clientes-container'),
             produtos: document.getElementById('produtos-container')
@@ -92,12 +89,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const entityToFetch = (entity === 'dashboard') ? 'movimentacoes' : entity;
         const container = pageContainers[entity];
 
-        // Usamos .then() para executar ações após a busca de dados
         fetchData(entityToFetch, container).then(() => {
             if (entity === 'clientes') {
                 populateClientesDropdown(allClientes);
             }
-            // Se a página ativada for o dashboard, atualize-o com os dados recém-buscados
             if (entity === 'dashboard') {
                 updateDashboard(allMovimentacoes);
             }
@@ -117,20 +112,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const data = await response.json();
 
-            // Armazena os dados na variável de estado correspondente
             if (entity === 'movimentacoes') allMovimentacoes = data;
             else if (entity === 'clientes') allClientes = data;
             else if (entity === 'produtos') allProdutos = data;
 
-            // Se houver um container para exibir a tabela, cria a tabela
             if (container) {
+                // Adicionando a classe para a responsividade da tabela
+                container.classList.add('responsive-table-container');
                 createTable(container, data, entity);
             }
         } catch (error) {
             console.error(`Erro ao buscar ${entity}:`, error);
-            if (container) {
-                container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}.</p>`;
-            }
+            if (container) container.innerHTML = `<p class="text-red-500">Falha ao carregar os dados de ${entity}.</p>`;
             showNotification(`Falha ao carregar dados de ${entity}`, 'error');
         } finally {
             hideLoader();
@@ -288,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
             container.innerHTML = '<p>Nenhum dado encontrado.</p>';
             return;
         }
-        container.classList.add('responsive-table-container');
+        
         const table = document.createElement('table');
         table.className = 'w-full text-left border-collapse';
         const thead = document.createElement('thead');
@@ -314,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = document.createElement('tr');
             headers.forEach(header => {
                 const td = document.createElement('td');
-                td.setAttribute('data-label', header); 
+                td.setAttribute('data-label', header); // Essencial para a responsividade
                 if (header === 'data' && rowData[header]) {
                     td.textContent = new Date(rowData[header]).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
                 } else {
@@ -375,14 +368,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- LÓGICA DO DASHBOARD (CORRIGIDA) ---
+    // --- LÓGICA DO DASHBOARD ---
     function formatCurrency(value) { return parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
     
     function updateDashboard(data) {
-        // Verificação de segurança: só executa se os elementos do dashboard existirem
-        if (!document.getElementById('total-entradas')) {
-            return;
-        }
+        if (!document.getElementById('total-entradas')) return;
 
         let totalEntradas = 0, totalSaidas = 0;
         const categoryTotals = {};
@@ -391,13 +381,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (mov && typeof mov === 'object') {
                     const valor = parseFloat(mov.valor || 0);
                     const tipoMovimentacao = (mov.tipo || '').toLowerCase();
-
                     if (tipoMovimentacao === 'entrada') totalEntradas += valor;
                     else if (tipoMovimentacao === 'saída') totalSaidas += valor;
-                    
-                    if (mov.categoria) {
-                        categoryTotals[mov.categoria] = (categoryTotals[mov.categoria] || 0) + valor;
-                    }
+                    if (mov.categoria) categoryTotals[mov.categoria] = (categoryTotals[mov.categoria] || 0) + valor;
                 }
             });
         }
@@ -433,9 +419,12 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const pageId = link.getAttribute('href').substring(1);
             window.location.hash = pageId;
-            showPage(pageId); 
+            // A função showPage já é chamada pelo evento hashchange
         });
     });
+
+    // Atualiza a página com base no hash da URL
+    window.addEventListener('hashchange', () => showPage(window.location.hash.substring(1) || 'dashboard'));
 
     logoutBtn.addEventListener('click', () => {
         localStorage.removeItem('jwtToken');
@@ -493,12 +482,43 @@ document.addEventListener('DOMContentLoaded', () => {
         categoriaMovimentacaoInput.addEventListener('input', toggleClienteField);
     }
 
-    // Carrega os clientes uma vez no início para popular o dropdown
+    // ================================================================
+    // ====> INÍCIO: LÓGICA DO MENU HAMBÚRGUER E SIDEBAR <====
+    // ================================================================
+    const hamburgerBtn = document.getElementById('hamburger-btn');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+    const toggleSidebar = () => {
+        sidebar.classList.toggle('active');
+        sidebarOverlay.classList.toggle('hidden');
+    };
+
+    if (hamburgerBtn && sidebar && sidebarOverlay) {
+        hamburgerBtn.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+    }
+
+    // Fecha o menu ao clicar num link (útil em mobile)
+    navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            // Apenas fecha se o menu estiver visível (em telas menores que 'lg')
+            if (window.innerWidth < 1024) {
+                if (sidebar.classList.contains('active')) {
+                    toggleSidebar();
+                }
+            }
+        });
+    });
+    // ================================================================
+    // ====> FIM: LÓGICA DO MENU HAMBÚRGUER E SIDEBAR <====
+    // ================================================================
+
+    // --- INICIALIZAÇÃO DA APLICAÇÃO ---
     fetchData('clientes', null).then(() => {
         populateClientesDropdown(allClientes);
     });
-
-    // INICIALIZAÇÃO DA APLICAÇÃO
+    
     const initialPage = window.location.hash.substring(1) || 'dashboard';
     showPage(initialPage);
 });
