@@ -88,13 +88,13 @@
                                 <!-- Data -->
                                 <div>
                                     <label for="data" class="block text-sm font-medium">Data</label>
-                                    <input type="date" id="data" name="data" required class="form-input">
+                                    <input type="date" id="data" name="data" required class="class="mt-1 block w-full rounded-md shadow-sm text-slate-900 bg-slate-50 border-slate-300 focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-200 dark:border-slate-400 dark:placeholder-slate-500 dark:focus:border-blue-600 dark:focus:ring-blue-600"">
                                 </div>
 
                                 <!-- Tipo -->
                                 <div>
                                     <label for="tipo" class="block text-sm font-medium">Tipo</label>
-                                    <select id="tipo" name="tipo" required class="form-input">
+                                    <select id="tipo" name="tipo" required class="class="mt-1 block w-full rounded-md shadow-sm text-slate-900 bg-slate-50 border-slate-300 focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-200 dark:border-slate-400 dark:placeholder-slate-500 dark:focus:border-blue-600 dark:focus:ring-blue-600"">
                                         <option value="ENTRADA">ENTRADA</option>
                                         <option value="SAÍDA">SAÍDA</option>
                                     </select>
@@ -103,13 +103,13 @@
                                 <!-- Categoria -->
                                 <div>
                                     <label for="categoria" class="block text-sm font-medium">Categoria</label>
-                                    <input type="text" id="categoria" name="categoria" required class="form-input" placeholder="Ex: Venda">
+                                    <input type="text" id="categoria" name="categoria" required class="class="mt-1 block w-full rounded-md shadow-sm text-slate-900 bg-slate-50 border-slate-300 focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-200 dark:border-slate-400 dark:placeholder-slate-500 dark:focus:border-blue-600 dark:focus:ring-blue-600"" placeholder="Ex: Venda">
                                 </div>
 
                                 <!-- Cliente (agora se ajusta corretamente) -->
                                 <div id="cliente-field-wrapper" class="hidden">
                                     <label for="cliente-movimentacao" class="block text-sm font-medium">Cliente</label>
-                                    <select id="cliente-movimentacao" name="cliente" class="form-input">
+                                    <select id="cliente-movimentacao" name="cliente" class="class="mt-1 block w-full rounded-md shadow-sm text-slate-900 bg-slate-50 border-slate-300 focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-200 dark:border-slate-400 dark:placeholder-slate-500 dark:focus:border-blue-600 dark:focus:ring-blue-600"">
                                         <option value="">Selecione um cliente</option>
                                     </select>
                                 </div>
@@ -117,25 +117,25 @@
                                 <!-- Descrição (ocupa 2 colunas em telas médias e grandes) -->
                                 <div class="md:col-span-2">
                                     <label for="descricao" class="block text-sm font-medium">Descrição</label>
-                                    <input type="text" id="descricao" name="descricao" required class="form-input" placeholder="Ex: Venda de frango">
+                                    <input type="text" id="descricao" name="descricao" required class="class="mt-1 block w-full rounded-md shadow-sm text-slate-900 bg-slate-50 border-slate-300 focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-200 dark:border-slate-400 dark:placeholder-slate-500 dark:focus:border-blue-600 dark:focus:ring-blue-600"" placeholder="Ex: Venda de frango">
                                 </div>
 
                                 <!-- Valor -->
                                 <div>
                                     <label for="valor" class="block text-sm font-medium">Valor</label>
-                                    <input type="text" inputmode="decimal" id="valor" name="valor" required class="form-input" placeholder="Ex: 150,00">
+                                    <input type="text" inputmode="decimal" id="valor" name="valor" required class="class="mt-1 block w-full rounded-md shadow-sm text-slate-900 bg-slate-50 border-slate-300 focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-200 dark:border-slate-400 dark:placeholder-slate-500 dark:focus:border-blue-600 dark:focus:ring-blue-600"" placeholder="Ex: 150,00">
                                 </div>
 
                                 <!-- Responsável -->
                                 <div>
                                     <label for="responsavel" class="block text-sm font-medium">Responsável</label>
-                                    <input type="text" id="responsavel" name="responsavel" required class="form-input" placeholder="Ex: Alexandre">
+                                    <input type="text" id="responsavel" name="responsavel" required class="class="mt-1 block w-full rounded-md shadow-sm text-slate-900 bg-slate-50 border-slate-300 focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-200 dark:border-slate-400 dark:placeholder-slate-500 dark:focus:border-blue-600 dark:focus:ring-blue-600"" placeholder="Ex: Alexandre">
                                 </div>
 
                                 <!-- Observações (ocupa a linha toda em telas grandes) -->
                                 <div class="lg:col-span-4">
                                     <label for="observacoes" class="block text-sm font-medium">Observações</label>
-                                    <input type="text" id="observacoes" name="observacoes" class="form-input" placeholder="Ex: Cliente X">
+                                    <input type="text" id="observacoes" name="observacoes" class="class="mt-1 block w-full rounded-md shadow-sm text-slate-900 bg-slate-50 border-slate-300 focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-200 dark:border-slate-400 dark:placeholder-slate-500 dark:focus:border-blue-600 dark:focus:ring-blue-600"" placeholder="Ex: Cliente X">
                                 </div>
 
                                 <!-- Botão (alinhado corretamente) -->
@@ -151,13 +151,19 @@
 
                 <!-- Página Clientes -->
                 <div id="page-clientes" class="page-content">
-                    <section class="mb-8"><h2 class="text-2xl font-semibold mb-4">Adicionar Novo Cliente</h2><form id="add-cliente-form" class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow grid grid-cols-1 md:grid-cols-2 gap-6"><div><label for="cliente-nome" class="block text-sm font-medium">Nome</label><input type="text" id="cliente-nome" name="nome" required class="form-input" placeholder="Ex: João da Silva"></div><div><label for="cliente-contato" class="block text-sm font-medium">Contato</label><input type="text" id="cliente-contato" name="contato" inputmode="tel" class="form-input" placeholder="Telefone ou e-mail"></div><div class="md:col-span-2"><label for="cliente-endereco" class="block text-sm font-medium">Endereço</label><input type="text" id="cliente-endereco" name="endereco" class="form-input" placeholder="Ex: Rua das Flores, 123"></div><div class="md:col-span-2"><button type="submit" class="mt-4 w-full lg:w-auto bg-blue-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm hover:bg-blue-700">Adicionar Cliente</button></div></form></section>
+                    <section class="mb-8"><h2 class="text-2xl font-semibold mb-4">Adicionar Novo Cliente</h2><form id="add-cliente-form" class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow grid grid-cols-1 md:grid-cols-2 gap-6"><div><label for="cliente-nome" class="block text-sm font-medium">Nome</label><input type="text" id="cliente-nome" name="nome" required class="class="mt-1 block w-full rounded-md shadow-sm text-slate-900 bg-slate-50 border-slate-300 focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-200 dark:border-slate-400 dark:placeholder-slate-500 dark:focus:border-blue-600 dark:focus:ring-blue-600"
+" placeholder="Ex: João da Silva"></div><div><label for="cliente-contato" class="block text-sm font-medium">Contato</label><input type="text" id="cliente-contato" name="contato" inputmode="tel" class="class="mt-1 block w-full rounded-md shadow-sm text-slate-900 bg-slate-50 border-slate-300 focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-200 dark:border-slate-400 dark:placeholder-slate-500 dark:focus:border-blue-600 dark:focus:ring-blue-600"
+" placeholder="Telefone ou e-mail"></div><div class="md:col-span-2"><label for="cliente-endereco" class="block text-sm font-medium">Endereço</label><input type="text" id="cliente-endereco" name="endereco" class="class="mt-1 block w-full rounded-md shadow-sm text-slate-900 bg-slate-50 border-slate-300 focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-200 dark:border-slate-400 dark:placeholder-slate-500 dark:focus:border-blue-600 dark:focus:ring-blue-600"
+" placeholder="Ex: Rua das Flores, 123"></div><div class="md:col-span-2"><button type="submit" class="mt-4 w-full lg:w-auto bg-blue-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm hover:bg-blue-700">Adicionar Cliente</button></div></form></section>
                     <section><h2 class="text-2xl font-semibold mb-4">Lista de Clientes</h2><div id="clientes-container" class="bg-white dark:bg-slate-800 p-2 sm:p-6 rounded-lg shadow"></div></section>
                 </div>
 
                 <!-- Página Produtos -->
                 <div id="page-produtos" class="page-content">
-                    <section class="mb-8"><h2 class="text-2xl font-semibold mb-4">Adicionar Novo Produto</h2><form id="add-produto-form" class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow grid grid-cols-1 gap-6"><div><label for="add-produto-nome" class="block text-sm font-medium">Nome</label><input type="text" name="nome" id="add-produto-nome" required class="form-input"></div><div><label for="add-produto-descricao" class="block text-sm font-medium">Descrição</label><input type="text" name="descricao" id="add-produto-descricao" class="form-input"></div><div><label for="add-produto-preco" class="block text-sm font-medium">Preço</label><input type="text" name="preco" id="add-produto-preco" inputmode="decimal" class="form-input"></div><button type="submit" class="w-full sm:w-auto justify-self-start bg-blue-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm hover:bg-blue-700">Adicionar Produto</button></form></section>
+                    <section class="mb-8"><h2 class="text-2xl font-semibold mb-4">Adicionar Novo Produto</h2><form id="add-produto-form" class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow grid grid-cols-1 gap-6"><div><label for="add-produto-nome" class="block text-sm font-medium">Nome</label><input type="text" name="nome" id="add-produto-nome" required class="class="mt-1 block w-full rounded-md shadow-sm text-slate-900 bg-slate-50 border-slate-300 focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-200 dark:border-slate-400 dark:placeholder-slate-500 dark:focus:border-blue-600 dark:focus:ring-blue-600"
+"></div><div><label for="add-produto-descricao" class="block text-sm font-medium">Descrição</label><input type="text" name="descricao" id="add-produto-descricao" class="class="mt-1 block w-full rounded-md shadow-sm text-slate-900 bg-slate-50 border-slate-300 focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-200 dark:border-slate-400 dark:placeholder-slate-500 dark:focus:border-blue-600 dark:focus:ring-blue-600"
+"></div><div><label for="add-produto-preco" class="block text-sm font-medium">Preço</label><input type="text" name="preco" id="add-produto-preco" inputmode="decimal" class="class="mt-1 block w-full rounded-md shadow-sm text-slate-900 bg-slate-50 border-slate-300 focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-200 dark:border-slate-400 dark:placeholder-slate-500 dark:focus:border-blue-600 dark:focus:ring-blue-600"
+"></div><button type="submit" class="w-full sm:w-auto justify-self-start bg-blue-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm hover:bg-blue-700">Adicionar Produto</button></form></section>
                     <section><h2 class="text-2xl font-semibold mb-4">Lista de Produtos</h2><div id="produtos-container" class="bg-white dark:bg-slate-800 p-2 sm:p-6 rounded-lg shadow"></div></section>
                 </div>
             </div>
