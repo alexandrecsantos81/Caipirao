@@ -112,3 +112,41 @@
   pois não são mais necessárias e estavam a causar o conflito.
   O layout agora é controlado 100% pelas classes do Tailwind no HTML.
 */
+
+/* DENTRO DE frontend/style.css */
+
+/* ================================================================
+   ESTILOS DE FORMULÁRIO REFORÇADOS
+   ================================================================ */
+@layer components {
+    .form-field {
+        /* Layout e Espaçamento */
+        @apply block w-full mt-1 p-2; /* Aumentamos o padding para p-2 */
+
+        /* Bordas e Sombra */
+        @apply border border-slate-300 rounded-lg shadow-sm; /* Borda mais visível e rounded-lg */
+
+        /* Cores e Foco (Modo Claro) */
+        @apply bg-slate-50 text-slate-900 placeholder-slate-400;
+        @apply focus:border-blue-500 focus:ring-1 focus:ring-blue-500;
+
+        /* Cores e Foco (Modo Escuro) */
+        @apply dark:bg-slate-200 dark:border-slate-500 dark:text-slate-900 dark:placeholder-slate-500;
+        @apply dark:focus:border-blue-600 dark:focus:ring-1 dark:focus:ring-blue-600;
+
+        /* Garante que a aparência seja consistente e não a padrão do navegador */
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+    }
+
+    /* Estilo específico para o dropdown (select) para adicionar a seta */
+    .form-select {
+        @apply form-field; /* Herda todos os estilos do form-field */
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e" );
+        background-position: right 0.5rem center;
+        background-repeat: no-repeat;
+        background-size: 1.5em 1.5em;
+        padding-right: 2.5rem; /* Espaço para a seta */
+    }
+}
