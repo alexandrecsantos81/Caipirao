@@ -7,7 +7,7 @@
 // =================================================================
 
 // --- 1. Importação de Módulos Essenciais ---
-require('dotenv').config(); // Carrega as variáveis de ambiente do ficheiro .env
+const { verifyToken } = require('./middleware/authMiddleware'); // Apenas verifyToken é usado globalmente aqui
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
@@ -30,7 +30,10 @@ const PORT = process.env.PORT || 3000;
 const allowedOrigins = [
     'https://caipiraosys.netlify.app', // O seu frontend em produção
     'http://localhost:5500',          // Ambiente de desenvolvimento local (Live Server )
-    'http://127.0.0.1:5500'           // Variação do localhost
+    'http://127.0.0.1:5500',
+    'http://localhost:8080',
+    'http://127.0.0.1:8080'
+               // Variação do localhost
 ];
 
 const corsOptions = {
@@ -99,20 +102,24 @@ app.post('/auth/login', async (req, res) => {
         const utilizador = result.rows[0];
 
         if (!utilizador) {
-            return res.status(401).json({ error: "Credenciais inválidas." }); // Utilizador não encontrado
+            return res.status(401).json({ error: "Credenciais inválidas." });
         }
 
         // Compara a senha fornecida com o hash guardado no banco
         const senhaCorreta = await bcrypt.compare(senha, utilizador.senha_hash);
         if (!senhaCorreta) {
-            return res.status(401).json({ error: "Credenciais inválidas." }); // Senha incorreta
+            return res.status(401).json({ error: "Credenciais inválidas." });
         }
 
         // Se as credenciais estiverem corretas, gera um token JWT
         const token = jwt.sign(
-            { email: utilizador.email, id: utilizador.id }, // Payload do token
-            process.env.JWT_SECRET,                         // Chave secreta
-            { expiresIn: '8h' }                             // Duração do token
+            { 
+                email: utilizador.email, 
+                id: utilizador.id,
+                perfil: utilizador.perfil // <--- ALTERAÇÃO APLICADA AQUI
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: '8h' }
         );
 
         res.json({ token });
@@ -123,25 +130,6 @@ app.post('/auth/login', async (req, res) => {
     }
 });
 
-
-// --- 6. Middleware de Verificação de Token JWT ---
-// Este middleware será aplicado às rotas de dados para protegê-las.
-function verifyToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Extrai o token do cabeçalho "Bearer TOKEN"
-
-    if (token == null) {
-        return res.status(401).json({ error: "Acesso negado. Nenhum token fornecido." });
-    }
-
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) {
-            return res.status(403).json({ error: "Token inválido ou expirado." });
-        }
-        req.user = user; // Adiciona os dados do utilizador (payload) à requisição
-        next(); // O token é válido, a requisição pode prosseguir para a rota final.
-    });
-}
 
 // --- 7. Definição das Rotas de Dados da API (Protegidas) ---
 // Todas as requisições para estes endpoints devem passar primeiro pelo `verifyToken`.
