@@ -1,20 +1,22 @@
-// Caminho do arquivo: /frontend/src/pages/Movimentacoes.tsx
+// /frontend/src/pages/Movimentacoes.tsx
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import * as z from 'zod';
 
 // Componentes de UI
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
 import MovimentacoesTable from './MovimentacoesTable';
-import MovimentacaoForm, { MovimentacaoSchema } from './MovimentacaoForm';
+import MovimentacaoForm, { formSchema } from './MovimentacaoForm';
 
-// Serviços e Tipos
-// AQUI ESTÁ A IMPORTAÇÃO CORRIGIDA:
-// Importamos tanto a função `createMovimentacao` quanto o tipo `CreateMovimentacaoPayload`.
-import { createMovimentacao, CreateMovimentacaoPayload } from '@/services/movimentacoes.service';
+// Hooks e Serviços
 import { useMovimentacoes } from '@/hooks/useMovimentacoes';
+import { createMovimentacao, CreateMovimentacaoPayload } from '@/services/movimentacoes.service';
+
+// Tipo gerado a partir do schema do formulário
+type MovimentacaoFormData = z.infer<typeof formSchema>;
 
 export function Movimentacoes() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -28,29 +30,30 @@ export function Movimentacoes() {
       queryClient.invalidateQueries({ queryKey: ['movimentacoes'] });
       setIsDrawerOpen(false);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Erro ao criar movimentação:", error);
-      toast.error('Erro ao criar movimentação. Verifique os dados e tente novamente.');
+      toast.error(error.response?.data?.error || 'Erro ao criar movimentação.');
     },
   });
 
   /**
-   * Função chamada quando o formulário é submetido com dados válidos.
-   * Recebe os dados do formulário (que podem ter campos como string)
-   * e os converte para o formato que a API espera (CreateMovimentacaoPayload).
+   * CORREÇÃO: Esta função agora constrói o payload exatamente como a API espera.
+   * Ela converte os valores de string do formulário para números.
    */
-  const handleSubmit = (data: MovimentacaoSchema) => {
+  const handleSubmit = (data: MovimentacaoFormData) => {
     const payload: CreateMovimentacaoPayload = {
-      ...data,
+      tipo: data.tipo,
       produto_id: Number(data.produto_id),
-      cliente_id: Number(data.cliente_id),
-      quantidade: Number(data.quantidade),
-      valor_unitario: Number(data.valor_unitario),
-      observacao: data.observacao ? data.observacao : undefined,
+      valor: Number(data.valor),
     };
+
+    // Adiciona o cliente_id apenas se ele existir (para movimentações de saída)
+    if (data.cliente_id) {
+      payload.cliente_id = Number(data.cliente_id);
+    }
+
     createMovimentacaoMutation.mutate(payload);
   };
-
 
   if (isLoading) return <div className="p-6">Carregando movimentações...</div>;
   if (isError) return <div className="p-6 text-red-500">Erro ao carregar os dados das movimentações.</div>;
@@ -68,9 +71,9 @@ export function Movimentacoes() {
               <DrawerTitle>Criar Nova Movimentação</DrawerTitle>
             </DrawerHeader>
             <div className="p-4">
-              <MovimentacaoForm 
-                onSubmit={handleSubmit} 
-                isSubmitting={createMovimentacaoMutation.isPending} 
+              <MovimentacaoForm
+                onSubmit={handleSubmit}
+                isSubmitting={createMovimentacaoMutation.isPending}
               />
             </div>
           </DrawerContent>
@@ -82,5 +85,4 @@ export function Movimentacoes() {
   );
 }
 
-// Adicione esta linha para fazer desta página uma exportação padrão, mantendo a consistência.
 export default Movimentacoes;

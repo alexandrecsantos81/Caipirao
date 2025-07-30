@@ -2,21 +2,31 @@
 import { useState } from 'react';
 import { useProdutos, useCreateProduto } from "@/hooks/useProdutos";
 import ProdutosTable from "./ProdutosTable";
-import ProdutoForm from "./ProdutoForm";
+import ProdutoForm, { ProdutoFormValues } from "./ProdutoForm"; // Importa o tipo do formulário
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger, DrawerDescription } from "@/components/ui/drawer";
 import { Terminal, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
+import { CreateProdutoPayload } from '@/services/produtos.service'; // Importa o tipo do payload
 
 export default function Produtos() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const { data: produtos, isLoading, isError, error } = useProdutos();
   const createProdutoMutation = useCreateProduto();
 
-  const handleSubmit = (values: any) => {
-    createProdutoMutation.mutate(values, {
+  /**
+   * CORREÇÃO: A função agora recebe os valores do formulário (com preço como string)
+   * e os converte para o payload que a API espera (com preço como número).
+   */
+  const handleSubmit = (values: ProdutoFormValues) => {
+    const payload: CreateProdutoPayload = {
+      ...values,
+      preco: parseFloat(values.preco), // Converte a string do preço para número
+    };
+
+    createProdutoMutation.mutate(payload, {
       onSuccess: () => {
         toast.success("Produto criado com sucesso!");
         setIsDrawerOpen(false);

@@ -5,19 +5,28 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea"; // Usaremos um Textarea para a descrição
+import { Textarea } from "@/components/ui/textarea";
 
-// Schema de validação com Zod
+/**
+ * CORREÇÃO: O schema agora trata 'preco' como string, que é o tipo nativo
+ * de um input. A validação para número é feita com `refine`.
+ * Isso resolve os conflitos de tipo complexos do react-hook-form.
+ */
 const formSchema = z.object({
   nome: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
   descricao: z.string().optional(),
-  // Converte o valor para número antes de validar
-  preco: z.coerce.number().min(0.01, { message: "O preço deve ser maior que zero." }),
+  preco: z.string()
+    .min(1, { message: "O preço é obrigatório." })
+    .refine(value => !isNaN(parseFloat(value)) && parseFloat(value) > 0, {
+      message: "O preço deve ser um número maior que zero.",
+    }),
 });
 
-type ProdutoFormValues = z.infer<typeof formSchema>;
+// O tipo inferido agora reflete o schema (preco é string)
+export type ProdutoFormValues = z.infer<typeof formSchema>;
 
 interface ProdutoFormProps {
+  // A função onSubmit agora espera o tipo correto do formulário
   onSubmit: (values: ProdutoFormValues) => void;
   isSubmitting: boolean;
 }
@@ -25,10 +34,11 @@ interface ProdutoFormProps {
 export default function ProdutoForm({ onSubmit, isSubmitting }: ProdutoFormProps) {
   const form = useForm<ProdutoFormValues>({
     resolver: zodResolver(formSchema),
+    // O valor padrão de 'preco' agora é uma string vazia
     defaultValues: {
       nome: "",
       descricao: "",
-      preco: 0,
+      preco: "",
     },
   });
 

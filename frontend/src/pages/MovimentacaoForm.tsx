@@ -9,13 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useProdutos } from "@/hooks/useProdutos";
 import { useClientes } from "@/hooks/useClientes";
 
-// =================================================================
-//                      INÍCIO DA CORREÇÃO
-// =================================================================
-// Voltamos a um schema que trabalha com strings, que é o que o formulário gerencia.
-// A validação de número é feita com `refine`.
+/**
+ * CORREÇÃO FINAL: A sintaxe do z.enum foi corrigida.
+ * A validação de erro é tratada pelo Zod por padrão se o campo for obrigatório.
+ */
 export const formSchema = z.object({
-  tipo: z.string().min(1, "O tipo é obrigatório."),
+  tipo: z.enum(['saida', 'entrada']), // Sintaxe correta, sem o segundo argumento de erro.
   produto_id: z.string().min(1, "Selecione um produto."),
   cliente_id: z.string().optional(),
   valor: z.string().min(1, "O valor é obrigatório.").refine(val => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
@@ -25,9 +24,6 @@ export const formSchema = z.object({
   message: "Cliente é obrigatório para saídas.",
   path: ["cliente_id"],
 });
-// =================================================================
-//                        FIM DA CORREÇÃO
-// =================================================================
 
 type MovimentacaoFormValues = z.infer<typeof formSchema>;
 
@@ -39,7 +35,6 @@ interface MovimentacaoFormProps {
 export default function MovimentacaoForm({ onSubmit, isSubmitting }: MovimentacaoFormProps) {
     const form = useForm<MovimentacaoFormValues>({
         resolver: zodResolver(formSchema),
-        // Os valores padrão agora correspondem perfeitamente aos tipos do schema (strings).
         defaultValues: { tipo: "saida", produto_id: "", cliente_id: "", valor: "" },
     });
 
@@ -80,7 +75,6 @@ export default function MovimentacaoForm({ onSubmit, isSubmitting }: Movimentaca
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Produto</FormLabel>
-                            {/* O defaultValue precisa ser uma string para corresponder ao tipo do schema */}
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
                                     <SelectTrigger>
@@ -88,9 +82,9 @@ export default function MovimentacaoForm({ onSubmit, isSubmitting }: Movimentaca
                                     </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {produtos?.map((p: any) => (
+                                  {produtos?.map((p: any) => (
                                         <SelectItem key={p.id} value={String(p.id)}>{p.nome}</SelectItem>
-                                    ))}
+                                  ))}
                                 </SelectContent>
                             </Select>
                             <FormMessage />
