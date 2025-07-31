@@ -1,5 +1,3 @@
-// /frontend/src/pages/Produtos.tsx
-
 import { useState } from 'react';
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,8 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal, PlusCircle } from "lucide-react";
 
-// Assumindo que estes hooks, tipos e componentes existem em seus respectivos arquivos.
-// Se eles não existirem, a aplicação irá apresentar erros, e este será nosso ponto de partida no próximo chat.
+// Hooks, tipos e componentes agora funcionais
 import { useProdutos, useCreateProduto } from "@/hooks/useProdutos";
 import ProdutosTable from "./ProdutosTable";
 import ProdutoForm, { ProdutoFormValues } from "./ProdutoForm";
@@ -38,7 +35,7 @@ export default function Produtos() {
     });
   };
 
-  // Função para renderizar o conteúdo principal da página (loading, erro, tabela ou estado vazio)
+  // Função para renderizar o conteúdo principal da página
   const renderContent = () => {
     if (isLoading) {
       return (

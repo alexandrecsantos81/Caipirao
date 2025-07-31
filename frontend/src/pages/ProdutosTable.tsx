@@ -1,4 +1,3 @@
-// /frontend/src/pages/ProdutosTable.tsx
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Produto } from "@/services/produtos.service";
 

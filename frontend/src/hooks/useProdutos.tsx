@@ -1,4 +1,3 @@
-// /frontend/src/hooks/useProdutos.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getProdutos, createProduto, CreateProdutoPayload } from '../services/produtos.service';
 

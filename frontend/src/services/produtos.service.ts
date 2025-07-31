@@ -1,4 +1,3 @@
-// /frontend/src/services/produtos.service.ts
 import api from './api';
 
 // Interface que define a estrutura de um Produto
