@@ -1,40 +1,26 @@
 // /frontend/src/services/api.ts
 import axios from 'axios';
 
-// Chave usada para buscar o token no localStorage. É uma boa prática usar uma constante.
 const AUTH_TOKEN_KEY = 'caipirao-auth-token';
 
-// Crie a instância do axios com a URL base da sua API
+// CORREÇÃO: Altere a URL base para apontar para o seu backend local.
+// Certifique-se de que a porta (ex: 3000 ) é a mesma em que seu backend está rodando.
 const api = axios.create({
-  baseURL: 'https://api-caipirao-maurizzio-procopio.onrender.com',
+  baseURL: 'http://localhost:3000', // <-- MUDE AQUI
 } );
 
-// =================================================================
-//          INÍCIO DA CORREÇÃO: AXIOS REQUEST INTERCEPTOR
-// =================================================================
-
-// Este interceptor é executado ANTES de cada requisição ser enviada.
+// Interceptor para adicionar o token de autenticação (código continua o mesmo)
 api.interceptors.request.use(
   (config) => {
-    // 1. Busca o token de autenticação do localStorage.
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
-
-    // 2. Se o token existir, anexa-o ao cabeçalho 'Authorization'.
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-
-    // 3. Retorna a configuração modificada para que a requisição prossiga.
     return config;
   },
   (error) => {
-    // Em caso de erro na configuração da requisição, rejeita a promise.
     return Promise.reject(error);
   }
 );
-
-// =================================================================
-//                     FIM DA CORREÇÃO
-// =================================================================
 
 export default api;

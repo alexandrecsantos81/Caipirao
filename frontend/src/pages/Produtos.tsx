@@ -1,29 +1,30 @@
 // /frontend/src/pages/Produtos.tsx
+
 import { useState } from 'react';
-import { useProdutos, useCreateProduto } from "@/hooks/useProdutos";
-import ProdutosTable from "./ProdutosTable";
-import ProdutoForm, { ProdutoFormValues } from "./ProdutoForm"; // Importa o tipo do formulário
-import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger, DrawerDescription } from "@/components/ui/drawer";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal, PlusCircle } from "lucide-react";
-import { toast } from "sonner";
-import { CreateProdutoPayload } from '@/services/produtos.service'; // Importa o tipo do payload
+
+// Assumindo que estes hooks, tipos e componentes existem em seus respectivos arquivos.
+// Se eles não existirem, a aplicação irá apresentar erros, e este será nosso ponto de partida no próximo chat.
+import { useProdutos, useCreateProduto } from "@/hooks/useProdutos";
+import ProdutosTable from "./ProdutosTable";
+import ProdutoForm, { ProdutoFormValues } from "./ProdutoForm";
+import { CreateProdutoPayload } from '@/services/produtos.service';
 
 export default function Produtos() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const { data: produtos, isLoading, isError, error } = useProdutos();
   const createProdutoMutation = useCreateProduto();
 
-  /**
-   * CORREÇÃO: A função agora recebe os valores do formulário (com preço como string)
-   * e os converte para o payload que a API espera (com preço como número).
-   */
   const handleSubmit = (values: ProdutoFormValues) => {
+    // Converte o preço de string (do formulário) para número (para a API)
     const payload: CreateProdutoPayload = {
       ...values,
-      preco: parseFloat(values.preco), // Converte a string do preço para número
+      preco: parseFloat(values.preco.replace(',', '.')), // Garante que a vírgula seja tratada como ponto decimal
     };
 
     createProdutoMutation.mutate(payload, {
@@ -37,6 +38,7 @@ export default function Produtos() {
     });
   };
 
+  // Função para renderizar o conteúdo principal da página (loading, erro, tabela ou estado vazio)
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -70,7 +72,7 @@ export default function Produtos() {
   };
 
   return (
-    <div>
+    <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">Produtos</h1>
@@ -84,7 +86,7 @@ export default function Produtos() {
             </Button>
           </DrawerTrigger>
           <DrawerContent>
-            <div className="bg-popover text-popover-foreground">
+            <div className="mx-auto w-full max-w-md bg-popover text-popover-foreground p-4">
               <DrawerHeader className="text-left">
                 <DrawerTitle>Cadastrar Novo Produto</DrawerTitle>
                 <DrawerDescription>

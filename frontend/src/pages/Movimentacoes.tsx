@@ -1,88 +1,100 @@
 // /frontend/src/pages/Movimentacoes.tsx
 
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import * as z from 'zod';
-
-// Componentes de UI
+import { toast } from 'sonner'; // Usando 'sonner' como no seu código original
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
-import MovimentacoesTable from './MovimentacoesTable';
-import MovimentacaoForm, { formSchema } from './MovimentacaoForm';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// Hooks e Serviços
-import { useMovimentacoes } from '@/hooks/useMovimentacoes';
-import { createMovimentacao, CreateMovimentacaoPayload } from '@/services/movimentacoes.service';
+// Assumindo que estes hooks e tipos existem. Se não, precisaremos criá-los.
+import { useMovimentacoes, useCreateMovimentacao } from '@/hooks/useMovimentacoes';
+import { useDespesas, useCreateDespesa } from '@/hooks/useDespesas';
+import { CreateMovimentacaoPayload } from '@/services/movimentacoes.service';
+import { CreateDespesaPayload } from '@/services/despesas.service';
 
-// Tipo gerado a partir do schema do formulário
-type MovimentacaoFormData = z.infer<typeof formSchema>;
+// Assumindo que estes componentes de formulário e tabela existem.
+import VendaForm from './VendaForm';
+import VendasTable from './VendasTable';
+import DespesaForm from './DespesaForm';
+import DespesasTable from './DespesasTable';
 
-export function Movimentacoes() {
+export default function Movimentacoes() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const queryClient = useQueryClient();
-  const { data: movimentacoes, isLoading, isError } = useMovimentacoes();
+  const [activeTab, setActiveTab] = useState("vendas");
 
-  const createMovimentacaoMutation = useMutation({
-    mutationFn: createMovimentacao,
-    onSuccess: () => {
-      toast.success('Movimentação criada com sucesso!');
-      queryClient.invalidateQueries({ queryKey: ['movimentacoes'] });
-      setIsDrawerOpen(false);
-    },
-    onError: (error: any) => {
-      console.error("Erro ao criar movimentação:", error);
-      toast.error(error.response?.data?.error || 'Erro ao criar movimentação.');
-    },
-  });
+  // A lógica de busca de dados
+  const { data: vendas, isLoading: isLoadingVendas } = useMovimentacoes();
+  const { data: despesas, isLoading: isLoadingDespesas } = useDespesas();
 
-  /**
-   * CORREÇÃO: Esta função agora constrói o payload exatamente como a API espera.
-   * Ela converte os valores de string do formulário para números.
-   */
-  const handleSubmit = (data: MovimentacaoFormData) => {
-    const payload: CreateMovimentacaoPayload = {
-      tipo: data.tipo,
-      produto_id: Number(data.produto_id),
-      valor: Number(data.valor),
-    };
+  // A lógica para criar novos registros
+  const createVendaMutation = useCreateMovimentacao();
+  const createDespesaMutation = useCreateDespesa();
 
-    // Adiciona o cliente_id apenas se ele existir (para movimentações de saída)
-    if (data.cliente_id) {
-      payload.cliente_id = Number(data.cliente_id);
-    }
-
-    createMovimentacaoMutation.mutate(payload);
+  const handleVendaSubmit = (data: CreateMovimentacaoPayload) => {
+    createVendaMutation.mutate(data, {
+      onSuccess: () => {
+        toast.success('Venda registrada com sucesso!');
+        setIsDrawerOpen(false);
+      },
+      onError: (error: any) => {
+        toast.error(`Erro ao registrar venda: ${error.response?.data?.error || 'Erro de conexão'}`);
+      },
+    });
   };
 
-  if (isLoading) return <div className="p-6">Carregando movimentações...</div>;
-  if (isError) return <div className="p-6 text-red-500">Erro ao carregar os dados das movimentações.</div>;
+  const handleDespesaSubmit = (data: CreateDespesaPayload) => {
+    createDespesaMutation.mutate(data, {
+      onSuccess: () => {
+        toast.success('Despesa registrada com sucesso!');
+        setIsDrawerOpen(false);
+      },
+      onError: (error: any) => {
+        toast.error(`Erro ao registrar despesa: ${error.response?.data?.error || 'Erro de conexão'}`);
+      },
+    });
+  };
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Movimentações</h1>
-        <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-          <DrawerTrigger asChild>
-            <Button>Nova Movimentação</Button>
-          </DrawerTrigger>
-          <DrawerContent className="bg-background">
-            <DrawerHeader>
-              <DrawerTitle>Criar Nova Movimentação</DrawerTitle>
-            </DrawerHeader>
-            <div className="p-4">
-              <MovimentacaoForm
-                onSubmit={handleSubmit}
-                isSubmitting={createMovimentacaoMutation.isPending}
-              />
-            </div>
-          </DrawerContent>
-        </Drawer>
-      </div>
-
-      <MovimentacoesTable data={movimentacoes || []} />
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex items-center justify-between mb-4">
+          <TabsList>
+            <TabsTrigger value="vendas">Entradas (Vendas)</TabsTrigger>
+            <TabsTrigger value="despesas">Saídas (Despesas)</TabsTrigger>
+          </TabsList>
+          <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+            <DrawerTrigger asChild>
+              <Button>Nova Movimentação</Button>
+            </DrawerTrigger>
+            <DrawerContent className="bg-background">
+              <DrawerHeader>
+                <DrawerTitle>
+                  {activeTab === 'vendas' ? 'Registrar Nova Venda' : 'Registrar Nova Despesa'}
+                </DrawerTitle>
+              </DrawerHeader>
+              <div className="p-4">
+                {activeTab === 'vendas' ? (
+                  <VendaForm
+                    onSubmit={handleVendaSubmit}
+                    isSubmitting={createVendaMutation.isPending}
+                  />
+                ) : (
+                  <DespesaForm
+                    onSubmit={handleDespesaSubmit}
+                    isSubmitting={createDespesaMutation.isPending}
+                  />
+                )}
+              </div>
+            </DrawerContent>
+          </Drawer>
+        </div>
+        <TabsContent value="vendas">
+          {isLoadingVendas ? <p>Carregando vendas...</p> : <VendasTable vendas={vendas || []} />}
+        </TabsContent>
+        <TabsContent value="despesas">
+          {isLoadingDespesas ? <p>Carregando despesas...</p> : <DespesasTable despesas={despesas || []} />}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
-
-export default Movimentacoes;
