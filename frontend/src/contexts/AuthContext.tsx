@@ -1,15 +1,25 @@
-// /frontend/src/contexts/AuthContext.tsx
+// frontend/src/contexts/AuthContext.tsx
 
-import React, { createContext, useState, useContext, useCallback } from 'react';
+import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode'; // 1. Importar a biblioteca
 import api from '../services/api';
 import { toast } from 'sonner';
 
-// Definindo a chave do token como uma constante para evitar erros de digitação.
 const AUTH_TOKEN_KEY = 'caipirao-auth-token';
+
+// 2. Definir a interface para os dados do usuário decodificados do token
+interface UserPayload {
+  id: number;
+  email: string;
+  perfil: 'ADMIN' | 'USER'; // Assumindo que os perfis podem ser estes
+  iat: number;
+  exp: number;
+}
 
 interface AuthContextType {
   isAuthenticated: boolean;
+  user: UserPayload | null; // 3. Adicionar o usuário ao contexto
   login: (email: string, pass: string) => Promise<void>;
   logout: () => void;
 }
@@ -18,17 +28,29 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
+  const [user, setUser] = useState<UserPayload | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
-  // CORREÇÃO 1: Simplificação do Estado.
-  // A inicialização do estado agora é feita em um único lugar.
-  // A função dentro do useState só roda uma vez, na primeira renderização,
-  // tornando o useEffect redundante para esta tarefa.
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+  // 4. Efeito para carregar e decodificar o token ao iniciar a aplicação
+  useEffect(() => {
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    return !!token; // Retorna true se o token existir, false caso contrário.
-  });
-
-  // O estado 'isInitialized' foi removido para simplificar, pois a lógica acima já resolve a inicialização.
+    if (token) {
+      try {
+        const decodedUser = jwtDecode<UserPayload>(token);
+        // Verifica se o token não expirou
+        if (decodedUser.exp * 1000 > Date.now()) {
+          setUser(decodedUser);
+          setIsAuthenticated(true);
+        } else {
+          // Se o token expirou, limpa o armazenamento
+          localStorage.removeItem(AUTH_TOKEN_KEY);
+        }
+      } catch (error) {
+        console.error("Falha ao decodificar o token:", error);
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+      }
+    }
+  }, []);
 
   const login = async (email: string, pass: string) => {
     try {
@@ -37,34 +59,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       localStorage.setItem(AUTH_TOKEN_KEY, token);
       
-      // O interceptor do Axios já adiciona o token nos headers das próximas requisições.
-      
+      const decodedUser = jwtDecode<UserPayload>(token);
+      setUser(decodedUser);
       setIsAuthenticated(true);
-      toast.success('Login realizado com sucesso!');
       
-      // Após o login, redireciona para a página principal.
+      toast.success('Login realizado com sucesso!');
       navigate('/');
 
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Falha no login. Verifique suas credenciais.');
-      throw error; // Lança o erro para que o formulário de login possa tratá-lo (ex: desabilitar o loading).
+      throw error;
     }
   };
 
-  // CORREÇÃO 2: Adicionado o redirecionamento no logout.
-  // Usamos useCallback para otimização, garantindo que a função não seja recriada a cada renderização.
   const logout = useCallback(() => {
     localStorage.removeItem(AUTH_TOKEN_KEY);
+    setUser(null); // Limpa os dados do usuário
     setIsAuthenticated(false);
-    
-    // Após o logout, redireciona o usuário para a página de login.
     navigate('/login');
     toast.info('Você foi desconectado.');
   }, [navigate]);
 
-
+  // 5. Passar o 'user' no valor do provider
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

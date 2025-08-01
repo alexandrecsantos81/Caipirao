@@ -3,10 +3,11 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 
-// ROTA GET (Leitura) - Listar todas as VENDAS
+// ROTA GET (Leitura) - Listar todas as VENDAS (ENTRADAS)
 router.get('/', async (req, res) => {
     try {
-        // CORREÇÃO: Removido o alias "AS peso_produto". Agora a coluna será retornada como "peso".
+        // Query revisada para garantir que todos os campos necessários para o frontend sejam retornados
+        // com nomes consistentes.
         const query = `
             SELECT
                 m.id,
@@ -15,7 +16,7 @@ router.get('/', async (req, res) => {
                 m.valor AS valor_total,
                 c.nome AS cliente_nome,
                 m.cliente_id,
-                m.peso, 
+                m.peso,
                 m.data_pagamento,
                 m.preco_manual,
                 m.responsavel AS responsavel_venda
@@ -24,17 +25,18 @@ router.get('/', async (req, res) => {
             WHERE m.tipo = 'ENTRADA'
             ORDER BY m.data DESC, m.id DESC;
         `;
-        const todasAsVendas = await pool.query(query);
-        res.json(todasAsVendas.rows);
+        const { rows } = await pool.query(query);
+        // Retorna as linhas encontradas. Se não houver nenhuma, retornará um array vazio [].
+        res.json(rows);
     } catch (err) {
         console.error('Erro detalhado ao buscar vendas:', err.stack);
         res.status(500).json({ error: "Erro no servidor ao buscar vendas." });
     }
 });
 
-// ROTA POST (Criação)
+// As rotas POST, PUT, e DELETE permanecem as mesmas da correção anterior.
+// ... (código de POST, PUT, DELETE)
 router.post('/', async (req, res) => {
-    // O frontend envia 'peso_produto', então mantemos aqui para inserir na coluna 'peso'
     const { cliente_id, produto_nome, data_venda, valor_total, peso_produto, data_pagamento, preco_manual, responsavel_venda } = req.body;
     if (!cliente_id || !produto_nome || !data_venda || !valor_total) {
         return res.status(400).json({ error: "Cliente, produto, data da venda e valor são obrigatórios." });
@@ -52,17 +54,13 @@ router.post('/', async (req, res) => {
     }
 });
 
-// ROTA PUT (Atualização)
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        // O frontend envia 'peso_produto', então mantemos aqui para atualizar a coluna 'peso'
         const { cliente_id, produto_nome, data_venda, valor_total, peso_produto, data_pagamento, preco_manual, responsavel_venda } = req.body;
-
         if (!cliente_id || !produto_nome || !data_venda || !valor_total) {
             return res.status(400).json({ error: "Todos os campos principais são obrigatórios." });
         }
-
         const vendaAtualizada = await pool.query(
             `UPDATE movimentacoes SET 
                 cliente_id = $1, descricao = $2, data = $3, valor = $4, peso = $5, 
@@ -70,7 +68,6 @@ router.put('/:id', async (req, res) => {
              WHERE id = $9 AND tipo = 'ENTRADA' RETURNING *`,
             [cliente_id, produto_nome, data_venda, valor_total, peso_produto || null, data_pagamento || null, preco_manual || null, responsavel_venda || null, id]
         );
-
         if (vendaAtualizada.rowCount === 0) {
             return res.status(404).json({ error: "Venda não encontrada para atualização." });
         }
@@ -81,12 +78,10 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// ROTA DELETE (Exclusão)
 router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const resultadoDelete = await pool.query("DELETE FROM movimentacoes WHERE id = $1 AND tipo = 'ENTRADA' RETURNING *", [id]);
-
         if (resultadoDelete.rowCount === 0) {
             return res.status(404).json({ error: "Venda não encontrada para exclusão." });
         }
@@ -96,5 +91,6 @@ router.delete('/:id', async (req, res) => {
         res.status(500).json({ error: "Erro no servidor ao apagar a venda." });
     }
 });
+
 
 module.exports = router;

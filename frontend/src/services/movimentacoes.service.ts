@@ -33,40 +33,21 @@ export type UpdateMovimentacaoPayload = CreateMovimentacaoPayload;
 
 // --- Funções da API ---
 
-/**
- * Busca a lista de todas as VENDAS na API.
- * @returns Uma promessa que resolve para um array de Venda.
- */
 export async function getMovimentacoes(): Promise<Venda[]> {
   const response = await api.get('/api/movimentacoes');
   return response.data;
 }
 
-/**
- * Envia os dados de uma nova VENDA para a API.
- * @param data - Os dados da nova venda.
- * @returns Uma promessa que resolve para a venda recém-criada.
- */
 export async function createMovimentacao(data: CreateMovimentacaoPayload): Promise<Venda> {
   const response = await api.post('/api/movimentacoes', data);
   return response.data;
 }
 
-/**
- * Envia os dados atualizados de uma VENDA para a API.
- * @param id - O ID da venda a ser atualizada.
- * @param payload - Os novos dados da venda.
- * @returns Uma promessa que resolve para a venda atualizada.
- */
 export async function updateMovimentacao({ id, payload }: { id: number, payload: UpdateMovimentacaoPayload }): Promise<Venda> {
   const response = await api.put(`/api/movimentacoes/${id}`, payload);
   return response.data;
 }
 
-/**
- * Envia uma requisição para deletar uma VENDA da API.
- * @param id - O ID da venda a ser deletada.
- */
 export async function deleteMovimentacao(id: number): Promise<void> {
   await api.delete(`/api/movimentacoes/${id}`);
 }
