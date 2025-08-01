@@ -1,3 +1,4 @@
+// /frontend/src/services/produtos.service.ts
 import api from './api';
 
 // Interface que define a estrutura de um Produto
@@ -8,21 +9,31 @@ export interface Produto {
   preco: number;
 }
 
-// Interface para o payload de criação de um novo produto
-export interface CreateProdutoPayload {
-  nome: string;
-  descricao?: string;
-  preco: number;
-}
+// Tipo para o payload de criação (sem o 'id')
+export type CreateProdutoPayload = Omit<Produto, 'id'>;
 
-// Função para buscar a lista de todos os produtos
+// Tipo para o payload de atualização (também sem o 'id')
+export type UpdateProdutoPayload = Omit<Produto, 'id'>;
+
+// --- Funções da API ---
+
 export const getProdutos = async (): Promise<Produto[]> => {
   const response = await api.get('/api/produtos');
   return response.data;
 };
 
-// Função para criar um novo produto
 export const createProduto = async (payload: CreateProdutoPayload): Promise<Produto> => {
   const response = await api.post('/api/produtos', payload);
   return response.data;
+};
+
+// NOVO: Função para atualizar um produto
+export const updateProduto = async ({ id, payload }: { id: number, payload: UpdateProdutoPayload }): Promise<Produto> => {
+  const response = await api.put(`/api/produtos/${id}`, payload);
+  return response.data;
+};
+
+// NOVO: Função para deletar um produto
+export const deleteProduto = async (id: number): Promise<void> => {
+  await api.delete(`/api/produtos/${id}`);
 };

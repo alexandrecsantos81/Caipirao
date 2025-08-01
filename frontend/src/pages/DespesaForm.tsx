@@ -1,18 +1,14 @@
 // /frontend/src/pages/DespesaForm.tsx
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+
+import { UseFormReturn } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { CreateDespesaPayload } from "@/services/despesas.service";
 
-/**
- * CORREÇÃO: Voltamos a um schema simples, sem '.transform()'.
- * O formulário irá lidar com strings e undefined, que é o padrão do react-hook-form.
- */
-const formSchema = z.object({
+// O schema de validação permanece o mesmo
+export const formSchema = z.object({
   tipo_saida: z.string().min(1, "O tipo de saída é obrigatório."),
   valor: z.string().min(1, "O valor é obrigatório.").refine(val => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
     message: "O valor deve ser um número positivo.",
@@ -25,52 +21,25 @@ const formSchema = z.object({
   responsavel_pagamento: z.string().optional(),
 });
 
-// Este tipo agora representa os dados brutos do formulário (com undefined)
-type DespesaFormValues = z.infer<typeof formSchema>;
+// O tipo para os valores do formulário permanece o mesmo
+export type DespesaFormValues = z.infer<typeof formSchema>;
 
+// A interface de props foi ATUALIZADA para receber a instância do form
 interface DespesaFormProps {
-  onSubmit: (values: CreateDespesaPayload) => void;
+  onSubmit: (values: DespesaFormValues) => void;
   isSubmitting: boolean;
+  formInstance: UseFormReturn<DespesaFormValues>;
 }
 
-export default function DespesaForm({ onSubmit, isSubmitting }: DespesaFormProps) {
-  // O useForm agora usa o tipo simples DespesaFormValues, sem conflitos.
-  const form = useForm<DespesaFormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      tipo_saida: "",
-      valor: "",
-      discriminacao: "",
-      nome_recebedor: "",
-      data_pagamento: "",
-      data_vencimento: "",
-      forma_pagamento: "",
-      responsavel_pagamento: "",
-    },
-  });
-
-  /**
-   * CORREÇÃO: A conversão de 'undefined' para 'null' acontece aqui,
-   * no momento da submissão, antes de chamar a função 'onSubmit' externa.
-   */
-  function handleFormSubmit(values: DespesaFormValues) {
-    const payload: CreateDespesaPayload = {
-      tipo_saida: values.tipo_saida,
-      valor: parseFloat(values.valor),
-      discriminacao: values.discriminacao || null,
-      nome_recebedor: values.nome_recebedor || null,
-      data_pagamento: values.data_pagamento || null,
-      data_vencimento: values.data_vencimento || null,
-      forma_pagamento: values.forma_pagamento || null,
-      responsavel_pagamento: values.responsavel_pagamento || null,
-    };
-    onSubmit(payload);
-  }
+export default function DespesaForm({ onSubmit, isSubmitting, formInstance: form }: DespesaFormProps) {
+  // A criação do form foi removida daqui. Agora ele vem das props.
+  // A função 'handleFormSubmit' também foi removida, pois a lógica de tratamento
+  // de dados (converter para número, etc.) agora reside no componente pai (Movimentacoes.tsx).
 
   return (
     <Form {...form}>
-      {/* O 'handleSubmit' do react-hook-form chama a nossa função 'handleFormSubmit' */}
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 p-1">
+      {/* O handleSubmit agora chama diretamente a função onSubmit recebida via props */}
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-1">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField control={form.control} name="tipo_saida" render={({ field }) => (
             <FormItem>

@@ -1,5 +1,6 @@
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+// frontend/src/pages/ProdutoForm.tsx
+
+import { UseFormReturn } from "react-hook-form"; // Importa apenas o tipo necessário
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -12,7 +13,7 @@ const formSchema = z.object({
   descricao: z.string().optional(),
   preco: z.string()
     .min(1, { message: "O preço é obrigatório." })
-    .refine(value => !isNaN(parseFloat(value)) && parseFloat(value) > 0, {
+    .refine(value => !isNaN(parseFloat(value.replace(',', '.'))) && parseFloat(value.replace(',', '.')) > 0, {
       message: "O preço deve ser um número maior que zero.",
     }),
 });
@@ -22,18 +23,10 @@ export type ProdutoFormValues = z.infer<typeof formSchema>;
 interface ProdutoFormProps {
   onSubmit: (values: ProdutoFormValues) => void;
   isSubmitting: boolean;
+  formInstance: UseFormReturn<ProdutoFormValues>; // Recebe a instância do form
 }
 
-export default function ProdutoForm({ onSubmit, isSubmitting }: ProdutoFormProps) {
-  const form = useForm<ProdutoFormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      nome: "",
-      descricao: "",
-      preco: "",
-    },
-  });
-
+export default function ProdutoForm({ onSubmit, isSubmitting, formInstance: form }: ProdutoFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4">

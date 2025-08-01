@@ -1,18 +1,24 @@
+// /backend/routes/movimentacoes.js
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 
-// ROTA GET (Leitura) - Listar todas as VENDAS (Entradas)
-// Nenhuma alteração aqui, pois já estava funcionando corretamente.
+// ROTA GET (Leitura) - Listar todas as VENDAS
 router.get('/', async (req, res) => {
     try {
+        // CORREÇÃO: Removido o alias "AS peso_produto". Agora a coluna será retornada como "peso".
         const query = `
             SELECT
                 m.id,
                 m.data AS data_venda,
                 m.descricao AS produto_nome,
                 m.valor AS valor_total,
-                c.nome AS cliente_nome
+                c.nome AS cliente_nome,
+                m.cliente_id,
+                m.peso, 
+                m.data_pagamento,
+                m.preco_manual,
+                m.responsavel AS responsavel_venda
             FROM movimentacoes AS m
             LEFT JOIN clientes AS c ON m.cliente_id = c.id
             WHERE m.tipo = 'ENTRADA'
@@ -26,52 +32,68 @@ router.get('/', async (req, res) => {
     }
 });
 
-// ROTA POST (Criação) - VERSÃO FINAL E COMPLETA
-// Atualizada para incluir os novos campos: peso, data_pagamento e preco_manual.
+// ROTA POST (Criação)
 router.post('/', async (req, res) => {
-    // 1. Recebendo os novos campos do corpo da requisição (req.body)
-    const {
-        cliente_id,
-        produto_nome,
-        data_venda,
-        valor_total,
-        peso,
-        data_pagamento,
-        preco_manual,
-        responsavel_venda
-    } = req.body;
-
-    // Validação dos campos obrigatórios
+    // O frontend envia 'peso_produto', então mantemos aqui para inserir na coluna 'peso'
+    const { cliente_id, produto_nome, data_venda, valor_total, peso_produto, data_pagamento, preco_manual, responsavel_venda } = req.body;
     if (!cliente_id || !produto_nome || !data_venda || !valor_total) {
         return res.status(400).json({ error: "Cliente, produto, data da venda e valor são obrigatórios." });
     }
-
     try {
-        // 2. Atualizando o comando INSERT para incluir as novas colunas
         const novaVenda = await pool.query(
-            `INSERT INTO movimentacoes (
-                tipo, cliente_id, descricao, data, valor, categoria, 
-                peso, data_pagamento, preco_manual, responsavel
-             )
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-             RETURNING *`,
-            [
-                'ENTRADA',
-                cliente_id,
-                produto_nome,
-                data_venda,
-                valor_total,
-                'VENDA',
-                peso || null, // Salva o peso ou null se não for fornecido
-                data_pagamento || null, // Salva a data de pagamento ou null
-                preco_manual || null, // Salva o preço manual ou null
-                responsavel_venda || null // Salva o responsável
-            ]
+            `INSERT INTO movimentacoes (tipo, cliente_id, descricao, data, valor, categoria, peso, data_pagamento, preco_manual, responsavel)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+            ['ENTRADA', cliente_id, produto_nome, data_venda, valor_total, 'VENDA', peso_produto || null, data_pagamento || null, preco_manual || null, responsavel_venda || null]
         );
         res.status(201).json(novaVenda.rows[0]);
     } catch (err) {
-        console.error('Erro ao criar venda (log detalhado):', err.stack);
+        console.error('Erro ao criar venda:', err.stack);
         res.status(500).json({ error: "Erro no servidor ao criar a venda." });
+    }
+});
+
+// ROTA PUT (Atualização)
+router.put('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        // O frontend envia 'peso_produto', então mantemos aqui para atualizar a coluna 'peso'
+        const { cliente_id, produto_nome, data_venda, valor_total, peso_produto, data_pagamento, preco_manual, responsavel_venda } = req.body;
+
+        if (!cliente_id || !produto_nome || !data_venda || !valor_total) {
+            return res.status(400).json({ error: "Todos os campos principais são obrigatórios." });
+        }
+
+        const vendaAtualizada = await pool.query(
+            `UPDATE movimentacoes SET 
+                cliente_id = $1, descricao = $2, data = $3, valor = $4, peso = $5, 
+                data_pagamento = $6, preco_manual = $7, responsavel = $8
+             WHERE id = $9 AND tipo = 'ENTRADA' RETURNING *`,
+            [cliente_id, produto_nome, data_venda, valor_total, peso_produto || null, data_pagamento || null, preco_manual || null, responsavel_venda || null, id]
+        );
+
+        if (vendaAtualizada.rowCount === 0) {
+            return res.status(404).json({ error: "Venda não encontrada para atualização." });
+        }
+        res.json(vendaAtualizada.rows[0]);
+    } catch (err) {
+        console.error('Erro ao atualizar venda:', err.stack);
+        res.status(500).json({ error: "Erro no servidor ao atualizar a venda." });
+    }
+});
+
+// ROTA DELETE (Exclusão)
+router.delete('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const resultadoDelete = await pool.query("DELETE FROM movimentacoes WHERE id = $1 AND tipo = 'ENTRADA' RETURNING *", [id]);
+
+        if (resultadoDelete.rowCount === 0) {
+            return res.status(404).json({ error: "Venda não encontrada para exclusão." });
+        }
+        res.json({ message: "Venda apagada com sucesso." });
+    } catch (err) {
+        console.error('Erro ao apagar venda:', err.stack);
+        res.status(500).json({ error: "Erro no servidor ao apagar a venda." });
     }
 });
 
