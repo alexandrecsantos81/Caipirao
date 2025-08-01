@@ -23,6 +23,7 @@ const PORT = process.env.PORT || 3000;
 
 // a) Configuração do CORS
 const allowedOrigins = [
+    'https://caipirao.netlify.app', // <<< ADICIONE ESTA LINHA
     'https://caipiraosys.netlify.app',
     'http://localhost:5173',
     'http://localhost:5500',
