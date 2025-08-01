@@ -1,17 +1,8 @@
-# VERSÃO CORRETA E FINAL
 [build]
-  # Comando para construir o projeto. Será executado dentro do 'base'.
   command = "npm run build"
-
-  # Diretório que o Netlify deve servir ao público.
-  # O caminho é relativo à pasta 'base'.
   publish = "dist"
-
-  # Pasta base do seu site. O Netlify vai "entrar" aqui primeiro.
   base = "frontend"
 
-# Regra de reescrita para aplicações Single-Page (SPA) como o React.
-# Isso garante que o F5 na página funcione corretamente.
 [[redirects]]
   from = "/*"
   to = "/index.html"
