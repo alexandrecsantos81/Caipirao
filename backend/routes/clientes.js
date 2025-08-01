@@ -1,121 +1,79 @@
-const express = require('express');
+// Use a sintaxe require para importar os módulos
+const express = require("express");
+// Linha corrigida
+const db = require("../db.js");
+
 const router = express.Router();
-const pool = require('../db'); // Vamos criar este ficheiro de conexão a seguir
 
-// ROTA GET (Leitura) - Para buscar todos os clientes
-// GET /api/clientes/
-router.get('/', async (req, res) => {
-    try {
-        // Executa a query no banco de dados usando o pool de conexões
-        const todosClientes = await pool.query(
-            "SELECT id, nome, contato, endereco FROM clientes ORDER BY nome ASC"
-        );
+// ROTA GET - Listar todos os clientes
+router.get("/", (_, res) => {
+  const q = "SELECT * FROM clientes ORDER BY nome ASC";
 
-        // Retorna os resultados como JSON. A propriedade .rows contém os dados.
-        res.json(todosClientes.rows);
-
-    } catch (err) {
-        // Em caso de erro no servidor ou no banco, loga o erro e envia uma resposta 500
-        console.error('Erro ao buscar clientes:', err.message);
-        res.status(500).json({ error: "Erro no servidor ao buscar clientes." });
+  db.query(q, (err, data) => {
+    // 1. Verificação de erro primeiro
+    if (err) {
+      // Loga o erro detalhado no console do *backend* para depuração
+      console.error("ERRO AO BUSCAR CLIENTES NO BANCO DE DADOS:", err);
+      return res.status(500).json({ message: "Erro interno do servidor ao consultar o banco de dados." });
     }
+
+    // 2. Verificação da resposta
+    // Garante que estamos retornando um array, mesmo que data.rows não exista ou esteja vazio.
+    // Se data.rows existir, usa ele. Senão, retorna um array vazio para o frontend.
+    const clientes = data && data.rows ? data.rows : [];
+    
+    return res.status(200).json(clientes);
+  });
 });
 
-// ROTA POST (Criação) - Para adicionar um novo cliente
-// POST /api/clientes/
-router.post('/', async (req, res) => {
-    try {
-        // 1. Extrai os dados do corpo da requisição (req.body)
-        const { nome, contato, endereco } = req.body;
-
-        // 2. Validação simples: verifica se o nome foi fornecido
-        if (!nome) {
-            return res.status(400).json({ error: "O campo 'nome' é obrigatório." });
-        }
-
-        // 3. Executa a query de inserção no banco de dados
-        // A sintaxe ($1, $2, $3) é uma medida de segurança (previne SQL Injection)
-        const novoCliente = await pool.query(
-            "INSERT INTO clientes (nome, contato, endereco) VALUES ($1, $2, $3) RETURNING *",
-            [nome.toUpperCase(), contato, endereco]
-        );
-
-        // 4. Retorna o cliente recém-criado com o status 201 (Created)
-        // O resultado da query de inserção com "RETURNING *" está em novoCliente.rows[0]
-        res.status(201).json(novoCliente.rows[0]);
-
-    } catch (err) {
-        console.error('Erro ao criar cliente:', err.message);
-        res.status(500).json({ error: "Erro no servidor ao criar cliente." });
+// ROTA POST - Criar um novo cliente
+router.post("/", (req, res) => {
+  const q =
+    "INSERT INTO clientes(nome, contato, nome_responsavel, telefone_whatsapp, logradouro, quadra, lote, bairro, cep, ponto_referencia) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)";
+  const values = [
+    req.body.nome, req.body.contato, req.body.nome_responsavel,
+    req.body.telefone_whatsapp, req.body.logradouro, req.body.quadra,
+    req.body.lote, req.body.bairro, req.body.cep, req.body.ponto_referencia,
+  ];
+  db.query(q, values, (err) => {
+    if (err) {
+      console.error("Erro na rota POST /clientes:", err);
+      return res.status(500).json("Ocorreu um erro ao cadastrar o cliente.");
     }
+    return res.status(201).json("Cliente cadastrado com sucesso.");
+  });
 });
 
-// ROTA PUT (Atualização) - Para editar um cliente existente
-// PUT /api/clientes/:id
-router.put('/:id', async (req, res) => {
-    // A lógica para atualizar um cliente no PostgreSQL virá aqui
-    try {
-        // 1. Extrai o ID dos parâmetros da URL e os novos dados do corpo
-        const { id } = req.params;
-        const { nome, contato, endereco } = req.body;
-
-        // 2. Validação simples: verifica se o nome foi fornecido
-        if (!nome) {
-            return res.status(400).json({ error: "O campo 'nome' é obrigatório." });
-        }
-
-        // 3. Executa a query de atualização no banco
-        const clienteAtualizado = await pool.query(
-            "UPDATE clientes SET nome = $1, contato = $2, endereco = $3 WHERE id = $4 RETURNING *",
-            [nome, contato, endereco, id]
-        );
-
-        // 4. Verifica se a atualização realmente aconteceu
-        // Se a query não encontrou um cliente com o ID fornecido, .rowCount será 0
-        if (clienteAtualizado.rowCount === 0) {
-            return res.status(404).json({ error: "Cliente não encontrado." });
-        }
-
-        // 5. Retorna o cliente com os dados atualizados
-        res.json(clienteAtualizado.rows[0]);
-
-    } catch (err) {
-        console.error('Erro ao atualizar cliente:', err.message);
-        res.status(500).json({ error: "Erro no servidor ao atualizar cliente." });
+// ROTA PUT - Atualizar um cliente existente
+router.put("/:id", (req, res) => {
+  const q =
+    "UPDATE clientes SET nome = $1, contato = $2, nome_responsavel = $3, telefone_whatsapp = $4, logradouro = $5, quadra = $6, lote = $7, bairro = $8, cep = $9, ponto_referencia = $10 WHERE id = $11";
+  const values = [
+    req.body.nome, req.body.contato, req.body.nome_responsavel,
+    req.body.telefone_whatsapp, req.body.logradouro, req.body.quadra,
+    req.body.lote, req.body.bairro, req.body.cep, req.body.ponto_referencia,
+    req.params.id,
+  ];
+  db.query(q, values, (err) => {
+    if (err) {
+      console.error("Erro na rota PUT /clientes:", err);
+      return res.status(500).json("Ocorreu um erro ao atualizar o cliente.");
     }
+    return res.status(200).json("Cliente atualizado com sucesso.");
+  });
 });
 
-// ROTA DELETE (Exclusão) - Para apagar um cliente
-// DELETE /api/clientes/:id
-router.delete('/:id', async (req, res) => {
-    try {
-        // 1. Extrai o ID dos parâmetros da URL
-        const { id } = req.params;
-
-        // 2. Executa a query de exclusão no banco
-        const resultadoDelete = await pool.query(
-            "DELETE FROM clientes WHERE id = $1 RETURNING *",
-            [id]
-        );
-
-        // 3. Verifica se a exclusão realmente aconteceu
-        // Se a query não encontrou um cliente com o ID, .rowCount será 0
-        if (resultadoDelete.rowCount === 0) {
-            return res.status(404).json({ error: "Cliente não encontrado." });
-        }
-
-        // 4. Retorna uma mensagem de sucesso
-        // É comum em rotas DELETE retornar uma mensagem ou o objeto que foi apagado
-        res.json({ 
-            message: "Cliente apagado com sucesso.",
-            cliente: resultadoDelete.rows[0] 
-        });
-
-    } catch (err) {
-        console.error('Erro ao apagar cliente:', err.message);
-        res.status(500).json({ error: "Erro no servidor ao apagar cliente." });
+// ROTA DELETE - Deletar um cliente
+router.delete("/:id", (req, res) => {
+  const q = "DELETE FROM clientes WHERE id = $1";
+  db.query(q, [req.params.id], (err) => {
+    if (err) {
+      console.error("Erro na rota DELETE /clientes:", err);
+      return res.status(500).json("Ocorreu um erro ao deletar o cliente.");
     }
+    return res.status(200).json("Cliente deletado com sucesso.");
+  });
 });
 
-
-module.exports = router; // Exporta o roteador para ser usado no server.js
+// Use module.exports para exportar o router
+module.exports = router;

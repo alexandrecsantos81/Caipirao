@@ -1,23 +1,19 @@
-// =================================================================
-//          FICHEIRO: backend/server.js (VERSÃO PÓS-MIGRAÇÃO)
-// =================================================================
-// DESCRIÇÃO: Servidor principal da API do Projeto Caipirão.
-//            Utiliza Express, CORS e JWT para fornecer endpoints
-//            seguros que interagem com um banco de dados PostgreSQL.
-// =================================================================
+// /backend/server.js
 
 // --- 1. Importação de Módulos Essenciais ---
-require('dotenv').config(); // Carrega as variáveis de ambiente do ficheiro .env
+const { verifyToken } = require('./middleware/authMiddleware');
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const pool = require('./db'); // Importa a configuração de conexão com o banco de dados
+const pool = require('./db');
+require('dotenv').config(); // Garante que as variáveis de ambiente sejam carregadas
 
 // --- 2. Importação dos Módulos de Rota (Endpoints da API) ---
 const clientesRouter = require('./routes/clientes');
 const produtosRouter = require('./routes/produtos');
 const movimentacoesRouter = require('./routes/movimentacoes');
+const despesasRouter = require('./routes/despesas'); // Importa a nova rota de despesas
 
 // --- 3. Inicialização e Configuração do Express ---
 const app = express();
@@ -25,59 +21,52 @@ const PORT = process.env.PORT || 3000;
 
 // --- 4. Configuração de Middlewares ---
 
-// a) Configuração do CORS (Cross-Origin Resource Sharing)
-// Define quais origens (websites) podem fazer requisições para esta API.
+// a) Configuração do CORS
 const allowedOrigins = [
-    'https://caipiraosys.netlify.app', // O seu frontend em produção
-    'http://localhost:5500',          // Ambiente de desenvolvimento local (Live Server )
-    'http://127.0.0.1:5500'           // Variação do localhost
+    'https://caipirao.netlify.app', // <<< ADICIONE ESTA LINHA
+    'https://caipiraosys.netlify.app',
+    'http://localhost:5173',
+    'http://localhost:5500',
+    'http://127.0.0.1:5500',
+    'http://localhost:8080',
+    'http://127.0.0.1:8080'
 ];
-
 const corsOptions = {
     origin: function (origin, callback ) {
-        // Permite requisições sem 'origin' (ex: Postman) ou se a origem estiver na lista.
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
             callback(new Error('Acesso não permitido pela política de CORS'));
         }
     },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Métodos HTTP permitidos
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
 };
-
-app.use(cors(corsOptions)); // Aplica as configurações de CORS a todas as requisições.
+app.use(cors(corsOptions));
 
 // b) Middleware para processar JSON
-// Habilita a API a entender e processar corpos de requisição no formato JSON.
 app.use(express.json());
 
-// --- 5. Definição das Rotas de Autenticação ---
+// --- 5. Definição das Rotas de Autenticação (Não protegidas) ---
 
 // Rota para REGISTAR um novo utilizador
 app.post('/auth/register', async (req, res) => {
+    // ... (código de registro continua o mesmo)
     const { email, senha } = req.body;
     if (!email || !senha) {
         return res.status(400).json({ error: "Email e senha são obrigatórios." });
     }
-
     try {
-        // Gera o hash da senha com um "sal" de 10 rounds
         const salt = await bcrypt.genSalt(10);
         const senhaHash = await bcrypt.hash(senha, salt);
-
-        // Insere o novo utilizador no banco de dados
         const novoUtilizador = await pool.query(
             "INSERT INTO utilizadores (email, senha_hash) VALUES ($1, $2) RETURNING id, email",
             [email, senhaHash]
         );
-
         res.status(201).json({
             message: "Utilizador registado com sucesso!",
             user: novoUtilizador.rows[0]
         });
-
     } catch (err) {
-        // Trata o erro de email duplicado
         if (err.code === '23505') {
             return res.status(409).json({ error: "Este email já está registado." });
         }
@@ -88,69 +77,53 @@ app.post('/auth/register', async (req, res) => {
 
 // Rota para fazer LOGIN de um utilizador
 app.post('/auth/login', async (req, res) => {
+    // ... (código de login continua o mesmo)
     const { email, senha } = req.body;
+    console.log('\n--- Nova Tentativa de Login ---');
+    console.log('Email recebido:', email);
+    console.log('Senha recebida (primeiros caracteres):', senha ? senha.substring(0, 3) + '...' : '(vazia)');
     if (!email || !senha) {
         return res.status(400).json({ error: "Email e senha são obrigatórios." });
     }
-
     try {
-        // Procura o utilizador pelo email no banco de dados
         const result = await pool.query("SELECT * FROM utilizadores WHERE email = $1", [email]);
         const utilizador = result.rows[0];
-
         if (!utilizador) {
-            return res.status(401).json({ error: "Credenciais inválidas." }); // Utilizador não encontrado
+            console.log('Resultado da consulta: Usuário não encontrado.');
+            return res.status(401).json({ error: "Credenciais inválidas." });
         }
-
-        // Compara a senha fornecida com o hash guardado no banco
+        console.log('Usuário encontrado:', utilizador.email);
+        console.log('Hash da senha no banco:', utilizador.senha_hash);
         const senhaCorreta = await bcrypt.compare(senha, utilizador.senha_hash);
+        console.log('Resultado da comparação de senha (bcrypt):', senhaCorreta);
         if (!senhaCorreta) {
-            return res.status(401).json({ error: "Credenciais inválidas." }); // Senha incorreta
+            console.log('Motivo da falha: Senhas não correspondem.');
+            return res.status(401).json({ error: "Credenciais inválidas." });
         }
-
-        // Se as credenciais estiverem corretas, gera um token JWT
+        console.log('Login bem-sucedido! Gerando token JWT...');
         const token = jwt.sign(
-            { email: utilizador.email, id: utilizador.id }, // Payload do token
-            process.env.JWT_SECRET,                         // Chave secreta
-            { expiresIn: '8h' }                             // Duração do token
+            { email: utilizador.email, id: utilizador.id, perfil: utilizador.perfil },
+            process.env.JWT_SECRET,
+            { expiresIn: '8h' }
         );
-
         res.json({ token });
-
     } catch (err) {
-        console.error('Erro no login:', err.message);
+        console.error('ERRO INESPERADO no bloco de login:', err.message);
         res.status(500).json({ error: "Erro no servidor durante o login." });
     }
 });
 
-
-// --- 6. Middleware de Verificação de Token JWT ---
-// Este middleware será aplicado às rotas de dados para protegê-las.
-function verifyToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Extrai o token do cabeçalho "Bearer TOKEN"
-
-    if (token == null) {
-        return res.status(401).json({ error: "Acesso negado. Nenhum token fornecido." });
-    }
-
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-        if (err) {
-            return res.status(403).json({ error: "Token inválido ou expirado." });
-        }
-        req.user = user; // Adiciona os dados do utilizador (payload) à requisição
-        next(); // O token é válido, a requisição pode prosseguir para a rota final.
-    });
-}
-
-// --- 7. Definição das Rotas de Dados da API (Protegidas) ---
-// Todas as requisições para estes endpoints devem passar primeiro pelo `verifyToken`.
+/**
+ * --- 6. Definição das Rotas de Dados da API (Protegidas) ---
+ * CORREÇÃO: Removidas as linhas duplicadas e incorretas.
+ * Todas as rotas sob '/api' agora exigem um token válido.
+ */
 app.use('/api/clientes', verifyToken, clientesRouter);
 app.use('/api/produtos', verifyToken, produtosRouter);
 app.use('/api/movimentacoes', verifyToken, movimentacoesRouter);
+app.use('/api/despesas', verifyToken, despesasRouter); // Adicionada a proteção de token
 
-
-// --- 8. Inicialização do Servidor ---
+// --- 7. Inicialização do Servidor ---
 app.listen(PORT, () => {
     console.log(`✅ Servidor limpo e refatorado a correr na porta ${PORT}`);
 });
