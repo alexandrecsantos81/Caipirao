@@ -1,8 +1,6 @@
 // /frontend/src/services/movimentacoes.service.ts
 import api from './api';
 
-// Interface para a lista de vendas (o que RECEBEMOS da API)
-// A propriedade 'peso' está alinhada com o que o backend envia.
 export interface Venda {
   id: number;
   data_venda: string;
@@ -10,19 +8,19 @@ export interface Venda {
   valor_total: number;
   cliente_nome: string;
   cliente_id: number;
-  peso: number | null; // <-- Propriedade correta para receber os dados
+  peso: number | null;
   data_pagamento: string | null;
+  data_vencimento: string | null; // <<< ADICIONADO AQUI
   preco_manual: number | null;
   responsavel_venda: string | null;
 }
 
-// O payload para criar/atualizar uma venda (o que ENVIAMOS para a API)
-// O backend espera 'peso_produto' no corpo da requisição.
 export type CreateMovimentacaoPayload = {
   cliente_id: number;
   produto_nome: string;
   data_venda: string;
   data_pagamento: string | null;
+  data_vencimento: string | null; // <<< ADICIONADO AQUI
   peso_produto: number | null;
   valor_total: number;
   preco_manual: number | null;
@@ -31,7 +29,7 @@ export type CreateMovimentacaoPayload = {
 
 export type UpdateMovimentacaoPayload = CreateMovimentacaoPayload;
 
-// --- Funções da API ---
+// --- Funções da API (não precisam de alteração na assinatura) ---
 
 export async function getMovimentacoes(): Promise<Venda[]> {
   const response = await api.get('/api/movimentacoes');

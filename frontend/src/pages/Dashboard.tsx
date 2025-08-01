@@ -1,8 +1,10 @@
-// frontend/src/pages/Dashboard.tsx
-
 import { useState, useMemo } from 'react';
-import { useMovimentacoes } from "@/hooks/useMovimentacoes";
+import { useAuth } from '@/contexts/AuthContext';
+import { useMovimentacoes, useUpdateMovimentacao } from "@/hooks/useMovimentacoes";
 import { useDespesas } from "@/hooks/useDespesas";
+import { Venda } from '@/services/movimentacoes.service';
+import { toast } from 'sonner';
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -12,24 +14,39 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal, Package } from "lucide-react";
+import { Terminal, Package, AlertCircle, CreditCard } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import QuickPaymentDialog from './QuickPaymentDialog';
 
 // --- Tipos e Funções Auxiliares ---
+// CORREÇÃO: Definição dos tipos que estavam faltando.
 type PeriodoFoco = { label: string; entradas: number; saidas: number; saldo: number };
 type PeriodoGrafico = '6M' | 'ANO' | '5A';
 type FiltroMovimentacoesData = 'hoje' | 'mes' | 'personalizado';
 type FiltroMovimentacoesTipo = 'todos' | 'Entrada' | 'Saída';
+
+interface Vencimento {
+  cliente_nome: string;
+  valor_total: number;
+  dias_para_vencer: number;
+  data_vencimento: string;
+  venda: Venda;
+}
+
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 const formatNumber = (value: number) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 3 }).format(value);
 const formatDate = (dateString: string | null) => dateString ? new Date(dateString).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'N/A';
 const toISODateString = (date: Date) => date.toISOString().split('T')[0];
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const { data: vendas, isLoading: isLoadingVendas, isError: isErrorVendas } = useMovimentacoes();
   const { data: despesas, isLoading: isLoadingDespesas, isError: isErrorDespesas } = useDespesas();
+  const updateVendaMutation = useUpdateMovimentacao();
 
-  // --- Estados para Interatividade ---
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [vendaParaQuitar, setVendaParaQuitar] = useState<Venda | null>(null);
+  
   const [periodoGrafico, setPeriodoGrafico] = useState<PeriodoGrafico>('6M');
   const [periodoEmFoco, setPeriodoEmFoco] = useState<PeriodoFoco | null>(null);
   const [filtroData, setFiltroData] = useState<FiltroMovimentacoesData>('hoje');
@@ -37,22 +54,19 @@ export default function Dashboard() {
   const [dataInicio, setDataInicio] = useState(toISODateString(new Date()));
   const [dataFim, setDataFim] = useState(toISODateString(new Date()));
 
-  // --- Lógica de Processamento de Dados ---
-  const { kpis, dadosGraficoPrincipal, movimentacoesFiltradas, totalMovimentacoes, dadosGraficoProdutos, tituloGraficoProdutos } = useMemo(() => {
+  const { kpis, dadosGraficoPrincipal, movimentacoesFiltradas, totalMovimentacoes, dadosGraficoProdutos, tituloGraficoProdutos, proximosVencimentos } = useMemo(() => {
     if (!vendas || !despesas) {
-      return { kpis: { label: 'Mês Atual', entradas: 0, saidas: 0, saldo: 0 }, dadosGraficoPrincipal: [], movimentacoesFiltradas: [], totalMovimentacoes: 0, dadosGraficoProdutos: [], tituloGraficoProdutos: 'Análise de Produtos' };
+      return { kpis: { label: 'Mês Atual', entradas: 0, saidas: 0, saldo: 0 }, dadosGraficoPrincipal: [], movimentacoesFiltradas: [], totalMovimentacoes: 0, dadosGraficoProdutos: [], tituloGraficoProdutos: 'Análise de Produtos', proximosVencimentos: [] };
     }
 
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
-    // 1. KPIs Iniciais (Mês Atual)
     const entradasMesAtual = vendas.filter(v => v.data_venda && new Date(v.data_venda).getFullYear() === currentYear && new Date(v.data_venda).getMonth() === currentMonth).reduce((acc, v) => acc + (Number(v.valor_total) || 0), 0);
     const saidasMesAtual = despesas.filter(d => d.data_pagamento && new Date(d.data_pagamento).getFullYear() === currentYear && new Date(d.data_pagamento).getMonth() === currentMonth).reduce((acc, d) => acc + (Number(d.valor) || 0), 0);
     const kpis = { label: 'Mês Atual', entradas: entradasMesAtual, saidas: saidasMesAtual, saldo: entradasMesAtual - saidasMesAtual };
 
-    // 2. Dados para o Gráfico Principal (baseado no filtro)
     const dataMap = new Map<string, { Entradas: number, Saídas: number }>();
     let tituloGraficoProdutos = 'Análise de Produtos';
 
@@ -78,26 +92,20 @@ export default function Dashboard() {
     }
     const dadosGraficoPrincipal = Array.from(dataMap.entries()).map(([name, values]) => ({ name, ...values }));
 
-    // 3. Filtrar as vendas ANTES de agrupar para o gráfico de produtos
-    const vendasFiltradas = vendas.filter(v => {
+    const vendasFiltradasGrafico = vendas.filter(v => {
         if (!v.data_venda) return false;
         const vendaDate = new Date(v.data_venda);
         if (periodoGrafico === '6M') {
             const seisMesesAtras = new Date(now.getFullYear(), now.getMonth() - 5, 1);
             return vendaDate >= seisMesesAtras;
         }
-        if (periodoGrafico === 'ANO') {
-            return vendaDate.getFullYear() === currentYear;
-        }
-        if (periodoGrafico === '5A') {
-            const cincoAnosAtras = currentYear - 4;
-            return vendaDate.getFullYear() >= cincoAnosAtras;
-        }
+        if (periodoGrafico === 'ANO') return vendaDate.getFullYear() === currentYear;
+        if (periodoGrafico === '5A') return vendaDate.getFullYear() >= (currentYear - 4);
         return true;
     });
 
     const produtosMap = new Map<string, { Faturamento: number, Peso: number }>();
-    vendasFiltradas.forEach(v => {
+    vendasFiltradasGrafico.forEach(v => {
       if (v.produto_nome) {
         const entry = produtosMap.get(v.produto_nome) || { Faturamento: 0, Peso: 0 };
         entry.Faturamento += Number(v.valor_total) || 0;
@@ -107,16 +115,13 @@ export default function Dashboard() {
     });
     const dadosGraficoProdutos = Array.from(produtosMap.entries()).map(([name, values]) => ({ name, ...values })).sort((a, b) => b.Faturamento - a.Faturamento);
 
-    // 4. Filtragem de Movimentações para a tabela
     const todasMovimentacoes = [
       ...vendas.map(v => ({ ...v, tipo: 'Entrada' as const, data: v.data_venda, valor: v.valor_total, descricao: v.produto_nome })),
       ...despesas.map(d => ({ ...d, tipo: 'Saída' as const, data: d.data_pagamento, valor: d.valor, descricao: d.tipo_saida }))
     ];
 
     const movimentacoesFiltradas = todasMovimentacoes.filter(m => {
-      if (filtroTipo !== 'todos' && m.tipo !== filtroTipo) {
-        return false;
-      }
+      if (filtroTipo !== 'todos' && m.tipo !== filtroTipo) return false;
       if (!m.data) return false;
       const dataMovimentacao = new Date(m.data);
       dataMovimentacao.setUTCHours(0, 0, 0, 0);
@@ -125,9 +130,7 @@ export default function Dashboard() {
         hoje.setUTCHours(0, 0, 0, 0);
         return dataMovimentacao.getTime() === hoje.getTime();
       }
-      if (filtroData === 'mes') {
-        return dataMovimentacao.getFullYear() === currentYear && dataMovimentacao.getMonth() === currentMonth;
-      }
+      if (filtroData === 'mes') return dataMovimentacao.getFullYear() === currentYear && dataMovimentacao.getMonth() === currentMonth;
       if (filtroData === 'personalizado') {
         const inicio = new Date(dataInicio);
         inicio.setUTCHours(0,0,0,0);
@@ -138,12 +141,36 @@ export default function Dashboard() {
       return false;
     }).sort((a, b) => new Date(b.data!).getTime() - new Date(a.data!).getTime());
 
-    const totalMovimentacoes = movimentacoesFiltradas.reduce((acc, mov) => {
-        const valor = mov.tipo === 'Entrada' ? mov.valor : -mov.valor;
-        return acc + (Number(valor) || 0);
-    }, 0);
+    const totalMovimentacoes = movimentacoesFiltradas.reduce((acc, mov) => acc + (Number(mov.tipo === 'Entrada' ? mov.valor : -mov.valor) || 0), 0);
 
-    return { kpis, dadosGraficoPrincipal, movimentacoesFiltradas, totalMovimentacoes, dadosGraficoProdutos, tituloGraficoProdutos };
+    const hoje = new Date();
+    hoje.setUTCHours(0, 0, 0, 0);
+    const cincoDiasFrente = new Date(hoje);
+    cincoDiasFrente.setDate(hoje.getDate() + 5);
+
+    const proximosVencimentos: Vencimento[] = vendas
+      .filter(venda => {
+        if (venda.data_pagamento || !venda.data_vencimento) return false;
+        const dataVenc = new Date(venda.data_vencimento);
+        dataVenc.setUTCHours(0, 0, 0, 0);
+        return dataVenc >= hoje && dataVenc <= cincoDiasFrente;
+      })
+      .map(venda => {
+        const dataVenc = new Date(venda.data_vencimento!);
+        dataVenc.setUTCHours(0, 0, 0, 0);
+        const diffTime = dataVenc.getTime() - hoje.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return {
+          cliente_nome: venda.cliente_nome,
+          valor_total: venda.valor_total,
+          dias_para_vencer: diffDays,
+          data_vencimento: formatDate(venda.data_vencimento),
+          venda: venda,
+        };
+      })
+      .sort((a, b) => a.dias_para_vencer - b.dias_para_vencer);
+
+    return { kpis, dadosGraficoPrincipal, movimentacoesFiltradas, totalMovimentacoes, dadosGraficoProdutos, tituloGraficoProdutos, proximosVencimentos };
   }, [vendas, despesas, periodoGrafico, filtroData, filtroTipo, dataInicio, dataFim]);
 
   const handleBarClick = (data: any) => {
@@ -151,6 +178,37 @@ export default function Dashboard() {
       const payload = data.activePayload[0].payload;
       setPeriodoEmFoco({ label: payload.name, entradas: payload.Entradas, saidas: payload.Saídas, saldo: payload.Entradas - payload.Saídas });
     }
+  };
+
+  const handleOpenQuickPayment = (venda: Venda) => {
+    setVendaParaQuitar(venda);
+    setIsPaymentDialogOpen(true);
+  };
+
+  const handleConfirmPayment = (vendaId: number, dataPagamento: string) => {
+    const vendaOriginal = vendas?.find(v => v.id === vendaId);
+    if (!vendaOriginal) {
+      toast.error("Venda original não encontrada para quitar.");
+      return;
+    }
+
+    const payload = {
+      ...vendaOriginal,
+      produto_nome: vendaOriginal.produto_nome,
+      peso_produto: vendaOriginal.peso,
+      data_pagamento: dataPagamento,
+    };
+
+    updateVendaMutation.mutate({ id: vendaId, payload }, {
+      onSuccess: () => {
+        toast.success("Pagamento registrado com sucesso!");
+        setIsPaymentDialogOpen(false);
+        setVendaParaQuitar(null);
+      },
+      onError: (err: any) => {
+        toast.error(`Erro ao registrar pagamento: ${err.response?.data?.error || err.message}`);
+      }
+    });
   };
 
   const isLoading = isLoadingVendas || isLoadingDespesas;
@@ -162,6 +220,7 @@ export default function Dashboard() {
       <div className="p-6 space-y-6">
         <Skeleton className="h-8 w-64" />
         <div className="grid gap-4 md:grid-cols-3"><Skeleton className="h-32" /><Skeleton className="h-32" /><Skeleton className="h-32" /></div>
+        <Skeleton className="h-48 w-full" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5"><Skeleton className="h-80 lg:col-span-3" /><Skeleton className="h-80 lg:col-span-2" /></div>
       </div>
     );
@@ -187,6 +246,63 @@ export default function Dashboard() {
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Saídas ({kpisEmExibicao.label})</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-red-600">{formatCurrency(kpisEmExibicao.saidas)}</div></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Saldo ({kpisEmExibicao.label})</CardTitle></CardHeader><CardContent><div className={`text-2xl font-bold ${kpisEmExibicao.saldo >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatCurrency(kpisEmExibicao.saldo)}</div></CardContent></Card>
       </div>
+
+      <Card className="border-yellow-500 bg-yellow-50/50 dark:bg-yellow-900/20 dark:border-yellow-700">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-yellow-800 dark:text-yellow-400">
+            <AlertCircle size={22} />
+            Pagamentos a Vencer (Próximos 5 dias)
+          </CardTitle>
+          <CardDescription className="text-yellow-700 dark:text-yellow-500">
+            Clientes com pagamentos pendentes que vencem em breve.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {proximosVencimentos.length > 0 ? (
+            <div className="max-h-[200px] overflow-y-auto">
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Vence em</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    {user?.perfil === 'ADMIN' && <TableHead className="text-center">Ação</TableHead>}
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {proximosVencimentos.map((v, index) => (
+                    <TableRow key={index}>
+                        <TableCell className="font-medium">{v.cliente_nome}</TableCell>
+                        <TableCell>
+                        <Badge variant={v.dias_para_vencer <= 1 ? "destructive" : "secondary"}>
+                            {v.dias_para_vencer === 0 ? 'Hoje' : `${v.dias_para_vencer} dia(s)`}
+                        </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-semibold">{formatCurrency(v.valor_total)}</TableCell>
+                        {user?.perfil === 'ADMIN' && (
+                          <TableCell className="text-center">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenQuickPayment(v.venda)}
+                            >
+                              <CreditCard className="mr-2 h-4 w-4" />
+                              Quitar
+                            </Button>
+                          </TableCell>
+                        )}
+                    </TableRow>
+                    ))}
+                </TableBody>
+                </Table>
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-sm text-gray-600">Nenhum pagamento a vencer nos próximos 5 dias.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
@@ -296,7 +412,7 @@ export default function Dashboard() {
                       <TableCell><Badge variant={mov.tipo === 'Entrada' ? 'default' : 'destructive'}>{mov.tipo}</Badge></TableCell>
                       <TableCell className="font-medium">{mov.descricao}</TableCell>
                       <TableCell>{formatDate(mov.data)}</TableCell>
-                      <TableCell className={`text-right font-semibold ${mov.tipo === 'Entrada' ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(mov.valor)}</TableCell>
+                      <TableCell className={`text-right font-semibold ${mov.tipo === 'Entrada' ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(Number(mov.valor))}</TableCell>
                     </TableRow>
                   ))
                 ) : (
@@ -307,6 +423,14 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <QuickPaymentDialog
+        isOpen={isPaymentDialogOpen}
+        onOpenChange={setIsPaymentDialogOpen}
+        venda={vendaParaQuitar}
+        onConfirm={handleConfirmPayment}
+        isSubmitting={updateVendaMutation.isPending}
+      />
     </div>
   );
 }

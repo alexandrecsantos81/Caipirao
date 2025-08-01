@@ -1,5 +1,3 @@
-// /frontend/src/pages/Movimentacoes.tsx
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,11 +11,11 @@ import { Terminal, PlusCircle } from 'lucide-react';
 
 // Hooks e tipos
 import { useMovimentacoes, useCreateMovimentacao, useUpdateMovimentacao, useDeleteMovimentacao } from '@/hooks/useMovimentacoes';
-import { CreateMovimentacaoPayload, UpdateMovimentacaoPayload, Venda } from '@/services/movimentacoes.service';
+import { CreateMovimentacaoPayload, Venda } from '@/services/movimentacoes.service';
 import VendaForm, { VendaFormValues, vendaFormSchema } from './VendaForm';
 import VendasTable from './VendasTable';
 import { useDespesas, useCreateDespesa, useUpdateDespesa, useDeleteDespesa } from '@/hooks/useDespesas';
-import { Despesa, CreateDespesaPayload as CreateDespesa, UpdateDespesaPayload as UpdateDespesa } from '@/services/despesas.service';
+import { Despesa, CreateDespesaPayload, UpdateDespesaPayload } from '@/services/despesas.service';
 import DespesaForm, { DespesaFormValues, formSchema as despesaFormSchema } from './DespesaForm';
 import DespesasTable from './DespesasTable';
 import { useProdutos } from '@/hooks/useProdutos';
@@ -44,20 +42,17 @@ export default function Movimentacoes() {
   const vendaForm = useForm<VendaFormValues>({ resolver: zodResolver(vendaFormSchema) });
   const despesaForm = useForm<DespesaFormValues>({ resolver: zodResolver(despesaFormSchema) });
 
-  // --- LÓGICA DE CONTROLE DO FORMULÁRIO COM useEffect ---
   useEffect(() => {
-    // Se o drawer está fechado, não faz nada
     if (!isDrawerOpen) return;
 
-    // Se a aba ativa é VENDAS
     if (activeTab === 'vendas') {
       if (vendaParaEditar) {
-        // MODO EDIÇÃO: Preenche o formulário com os dados da venda
         const produto = produtos?.find(p => p.nome === vendaParaEditar.produto_nome);
         vendaForm.reset({
           cliente_id: String(vendaParaEditar.cliente_id),
           produto_id: produto ? String(produto.id) : "",
           data_venda: vendaParaEditar.data_venda.split('T')[0],
+          data_vencimento: vendaParaEditar.data_vencimento?.split('T')[0] || '',
           peso_produto: String(vendaParaEditar.peso || ''),
           preco_manual: String(vendaParaEditar.preco_manual || ''),
           valor_total: String(vendaParaEditar.valor_total || ''),
@@ -65,11 +60,11 @@ export default function Movimentacoes() {
           responsavel_venda: vendaParaEditar.responsavel_venda || '',
         });
       } else {
-        // MODO CRIAÇÃO: Limpa o formulário para os valores padrão
         vendaForm.reset({
           cliente_id: "",
           produto_id: "",
           data_venda: new Date().toISOString().split('T')[0],
+          data_vencimento: "",
           peso_produto: "",
           preco_manual: "",
           valor_total: "",
@@ -77,18 +72,24 @@ export default function Movimentacoes() {
           responsavel_venda: "",
         });
       }
-    } else { // Se a aba ativa é DESPESAS
+    } else {
       if (despesaParaEditar) {
-        // MODO EDIÇÃO: Preenche o formulário de despesa
-        despesaForm.reset({ ...despesaParaEditar, valor: String(despesaParaEditar.valor), discriminacao: despesaParaEditar.discriminacao || '', nome_recebedor: despesaParaEditar.nome_recebedor || '', data_pagamento: despesaParaEditar.data_pagamento?.split('T')[0] || '', data_vencimento: despesaParaEditar.data_vencimento?.split('T')[0] || '', forma_pagamento: despesaParaEditar.forma_pagamento || '', responsavel_pagamento: despesaParaEditar.responsavel_pagamento || '' });
+        despesaForm.reset({
+          ...despesaParaEditar,
+          valor: String(despesaParaEditar.valor),
+          discriminacao: despesaParaEditar.discriminacao || '',
+          nome_recebedor: despesaParaEditar.nome_recebedor || '',
+          data_pagamento: despesaParaEditar.data_pagamento?.split('T')[0] || '',
+          data_vencimento: despesaParaEditar.data_vencimento?.split('T')[0] || '',
+          forma_pagamento: despesaParaEditar.forma_pagamento || '',
+          responsavel_pagamento: despesaParaEditar.responsavel_pagamento || ''
+        });
       } else {
-        // MODO CRIAÇÃO: Limpa o formulário de despesa
         despesaForm.reset({ tipo_saida: '', valor: '', discriminacao: '', nome_recebedor: '', data_pagamento: '', data_vencimento: '', forma_pagamento: '', responsavel_pagamento: '' });
       }
     }
   }, [isDrawerOpen, vendaParaEditar, despesaParaEditar, activeTab, produtos, vendaForm, despesaForm]);
 
-  // --- Lógica de cálculo (sem alterações) ---
   const watchedProductId = vendaForm.watch("produto_id");
   const watchedPeso = vendaForm.watch("peso_produto");
   const watchedPrecoManual = vendaForm.watch("preco_manual");
@@ -107,7 +108,6 @@ export default function Movimentacoes() {
     }
   }, [watchedProductId, watchedPeso, watchedPrecoManual, produtos, vendaForm]);
 
-  // --- Handlers de Ação ---
   const handleAddNew = () => {
     setVendaParaEditar(null);
     setDespesaParaEditar(null);
@@ -115,20 +115,30 @@ export default function Movimentacoes() {
   };
 
   const handleVendaEdit = (venda: Venda) => {
-    setDespesaParaEditar(null); // Garante que o modo de edição de despesa seja desativado
+    setDespesaParaEditar(null);
     setVendaParaEditar(venda);
     setIsDrawerOpen(true);
   };
 
   const handleDespesaEdit = (despesa: Despesa) => {
-    setVendaParaEditar(null); // Garante que o modo de edição de venda seja desativado
+    setVendaParaEditar(null);
     setDespesaParaEditar(despesa);
     setIsDrawerOpen(true);
   };
 
   const handleVendaSubmit = (values: VendaFormValues) => {
     const produtoSelecionado = produtos?.find(p => String(p.id) === values.produto_id);
-    const payload = { cliente_id: Number(values.cliente_id), produto_nome: produtoSelecionado?.nome || 'Produto não encontrado', data_venda: values.data_venda, data_pagamento: values.data_pagamento || null, peso_produto: values.peso_produto ? parseFloat(values.peso_produto) : null, valor_total: parseFloat(values.valor_total), preco_manual: values.preco_manual ? parseFloat(values.preco_manual) : null, responsavel_venda: values.responsavel_venda || null };
+    const payload: CreateMovimentacaoPayload = { 
+        cliente_id: Number(values.cliente_id), 
+        produto_nome: produtoSelecionado?.nome || 'Produto não encontrado', 
+        data_venda: values.data_venda, 
+        data_pagamento: values.data_pagamento || null, 
+        data_vencimento: values.data_vencimento || null,
+        peso_produto: values.peso_produto ? parseFloat(values.peso_produto) : null, 
+        valor_total: parseFloat(values.valor_total), 
+        preco_manual: values.preco_manual ? parseFloat(values.preco_manual) : null, 
+        responsavel_venda: values.responsavel_venda || null 
+    };
     const handleSuccess = (action: string) => { toast.success(`Venda ${action} com sucesso!`); setIsDrawerOpen(false); };
     const handleError = (action: string, err: any) => { toast.error(`Erro ao ${action} venda: ${err.response?.data?.error || err.message}`); };
     if (vendaParaEditar) {
@@ -139,13 +149,27 @@ export default function Movimentacoes() {
   };
 
   const handleDespesaSubmit = (values: DespesaFormValues) => {
-    const payload = { ...values, valor: parseFloat(values.valor), discriminacao: values.discriminacao || null, nome_recebedor: values.nome_recebedor || null, data_pagamento: values.data_pagamento || null, data_vencimento: values.data_vencimento || null, forma_pagamento: values.forma_pagamento || null, responsavel_pagamento: values.responsavel_pagamento || null };
+    // CORREÇÃO APLICADA AQUI: O payload é criado com o tipo correto.
+    const payload: CreateDespesaPayload | UpdateDespesaPayload = {
+        ...values,
+        valor: parseFloat(values.valor),
+        discriminacao: values.discriminacao || null,
+        nome_recebedor: values.nome_recebedor || null,
+        data_pagamento: values.data_pagamento || null,
+        data_vencimento: values.data_vencimento || null,
+        forma_pagamento: values.forma_pagamento || null,
+        responsavel_pagamento: values.responsavel_pagamento || null
+    };
+
     const handleSuccess = (action: string) => { toast.success(`Despesa ${action} com sucesso!`); setIsDrawerOpen(false); };
     const handleError = (action: string, err: any) => { toast.error(`Erro ao ${action} despesa: ${err.response?.data?.error || err.message}`); };
+
     if (despesaParaEditar) {
+      // A chamada da mutação agora é simples e correta.
       updateDespesaMutation.mutate({ id: despesaParaEditar.id, payload }, { onSuccess: () => handleSuccess('atualizada'), onError: (err) => handleError('atualizar', err) });
     } else {
-      createDespesaMutation.mutate(payload as CreateDespesa, { onSuccess: () => handleSuccess('criada'), onError: (err) => handleError('criar', err) });
+      // A chamada da mutação agora é simples e correta.
+      createDespesaMutation.mutate(payload, { onSuccess: () => handleSuccess('criada'), onError: (err) => handleError('criar', err) });
     }
   };
 
@@ -167,7 +191,7 @@ export default function Movimentacoes() {
 
         <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
           <DrawerContent>
-            <div className="mx-auto w-full p-4">
+            <div className="mx-auto w-full max-w-2xl p-4">
               <DrawerHeader>
                 <DrawerTitle>{isEditing ? (activeTab === 'vendas' ? 'Editar Venda' : 'Editar Despesa') : (activeTab === 'vendas' ? 'Registrar Nova Venda' : 'Registrar Nova Despesa')}</DrawerTitle>
                 <DrawerDescription>Preencha os campos abaixo para salvar o registro.</DrawerDescription>
@@ -189,10 +213,14 @@ export default function Movimentacoes() {
         </TabsList>
 
         <TabsContent value="vendas">
-          <VendasTable vendas={vendas || []} onEdit={handleVendaEdit} onDelete={handleVendaDelete} />
+          {isLoadingVendas && <div className="mt-6 space-y-2"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>}
+          {isErrorVendas && <Alert variant="destructive" className="mt-6"><Terminal className="h-4 w-4" /><AlertTitle>Erro</AlertTitle><AlertDescription>{errorVendas.message}</AlertDescription></Alert>}
+          {vendas && <VendasTable vendas={vendas} onEdit={handleVendaEdit} onDelete={handleVendaDelete} />}
         </TabsContent>
         <TabsContent value="despesas">
-          <DespesasTable despesas={despesas || []} onEdit={handleDespesaEdit} onDelete={handleDespesaDelete} />
+          {isLoadingDespesas && <div className="mt-6 space-y-2"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>}
+          {isErrorDespesas && <Alert variant="destructive" className="mt-6"><Terminal className="h-4 w-4" /><AlertTitle>Erro</AlertTitle><AlertDescription>{errorDespesas.message}</AlertDescription></Alert>}
+          {despesas && <DespesasTable despesas={despesas} onEdit={handleDespesaEdit} onDelete={handleDespesaDelete} />}
         </TabsContent>
       </Tabs>
     </div>

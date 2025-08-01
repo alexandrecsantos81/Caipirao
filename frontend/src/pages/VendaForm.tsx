@@ -13,6 +13,7 @@ export const vendaFormSchema = z.object({
   cliente_id: z.string().min(1, "Selecione um cliente."),
   produto_id: z.string().min(1, "Selecione um produto."),
   data_venda: z.string().min(1, "A data da venda é obrigatória."),
+  data_vencimento: z.string().optional(), // <<< ADICIONADO AQUI
   peso_produto: z.string().optional(),
   preco_manual: z.string().optional(),
   valor_total: z.string().min(1, "O valor total é obrigatório e deve ser maior que zero."),
@@ -35,6 +36,7 @@ export default function VendaForm({ onSubmit, isSubmitting, formInstance: form }
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-1">
+        {/* Cliente e Produto (sem alterações) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField control={form.control} name="cliente_id" render={({ field }) => (
             <FormItem>
@@ -52,12 +54,9 @@ export default function VendaForm({ onSubmit, isSubmitting, formInstance: form }
               <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                 <FormControl><SelectTrigger><SelectValue placeholder="Selecione o produto" /></SelectTrigger></FormControl>
                 <SelectContent>
-                  {/* CORREÇÃO APLICADA AQUI */}
                   {produtos?.map(p => {
-                    // Garante que o preço seja um número antes de formatar
                     const precoNumerico = typeof p.preco === 'number' ? p.preco : parseFloat(p.preco);
                     const precoFormatado = !isNaN(precoNumerico) ? precoNumerico.toFixed(2).replace('.', ',') : 'Preço inválido';
-                    
                     return (
                       <SelectItem key={p.id} value={String(p.id)}>
                         {p.nome} (R$ {precoFormatado}/kg)
@@ -70,7 +69,8 @@ export default function VendaForm({ onSubmit, isSubmitting, formInstance: form }
             </FormItem>
           )} />
         </div>
-        {/* O restante do arquivo permanece igual... */}
+
+        {/* Peso e Preço Manual (sem alterações) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField control={form.control} name="peso_produto" render={({ field }) => (
             <FormItem>
@@ -87,6 +87,8 @@ export default function VendaForm({ onSubmit, isSubmitting, formInstance: form }
             </FormItem>
           )} />
         </div>
+
+        {/* Valor Total (sem alterações) */}
         <FormField control={form.control} name="valor_total" render={({ field }) => (
           <FormItem>
             <FormLabel>Valor Total da Venda (R$)</FormLabel>
@@ -94,7 +96,9 @@ export default function VendaForm({ onSubmit, isSubmitting, formInstance: form }
             <FormMessage />
           </FormItem>
         )} />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        {/* Datas (COM ALTERAÇÃO) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <FormField control={form.control} name="data_venda" render={({ field }) => (
             <FormItem>
               <FormLabel>Data da Venda</FormLabel>
@@ -102,14 +106,23 @@ export default function VendaForm({ onSubmit, isSubmitting, formInstance: form }
               <FormMessage />
             </FormItem>
           )} />
+          <FormField control={form.control} name="data_vencimento" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Data de Vencimento</FormLabel>
+              <FormControl><Input type="date" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
           <FormField control={form.control} name="data_pagamento" render={({ field }) => (
             <FormItem>
-              <FormLabel>Data do Pagamento (Opcional)</FormLabel>
+              <FormLabel>Data do Pagamento</FormLabel>
               <FormControl><Input type="date" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
         </div>
+
+        {/* Responsável e Botão (sem alterações) */}
         <FormField control={form.control} name="responsavel_venda" render={({ field }) => (
           <FormItem>
             <FormLabel>Responsável pela Venda (Opcional)</FormLabel>
