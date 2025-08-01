@@ -1,15 +1,8 @@
-# Ficheiro de Configuração do Netlify
-
+# netlify.toml
 [build]
-  # Comando de build (não temos, então fica vazio)
-  command = ""
-  
-  # A pasta que o Netlify deve publicar.
-  # Como a base é 'frontend', o diretório de publicação é a própria raiz ('.')
-  publish = "."
-  
-  # A pasta base do seu site. O Netlify vai "entrar" aqui primeiro.
-  base = "frontend"
+  base    = "frontend" # Diz ao Netlify para entrar na pasta 'frontend' primeiro
+  publish = "frontend/dist" # A pasta que o Netlify deve servir ao público
+  command = "npm install && npm run build" # Comandos para construir o projeto
 
 [[redirects]]
   from = "/*"
